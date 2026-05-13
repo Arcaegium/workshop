@@ -1,0 +1,195 @@
+backend:
+  name: github
+  repo: Arcaegium/arcaegium.github.io
+  branch: main
+
+media_folder: assets/portals
+public_folder: assets/portals
+
+collections:
+
+  # ════════════════════════════════════════
+  # PORTALS — manage gateway cards
+  # ════════════════════════════════════════
+  - name: portals
+    label: Portals
+    label_singular: Portal
+    description: "Manage the gateway cards on the Arcaegium landing page."
+    files:
+      - name: portals
+        label: Portal Cards
+        file: content/portals.json
+        fields:
+          - name: portals
+            label: Portals
+            label_singular: Portal
+            widget: list
+            summary: "{{fields.gateway_number}} — {{fields.title}} [{{fields.state}}]"
+            fields:
+              - { name: id, label: ID, widget: string, hint: "e.g. portal-01. Do not change after creation." }
+              - { name: sort_order, label: Sort Order, widget: number, value_type: int, min: 1 }
+              - { name: visible, label: Visible, widget: boolean, default: true }
+              - { name: gateway_number, label: Gateway Number, widget: string, hint: "e.g. 01, 02, 03" }
+              - { name: genre_label, label: Genre Label, widget: string, hint: "e.g. STEAMPUNK, CYBERPUNK, UNKNOWN" }
+              - name: state
+                label: Card State
+                widget: select
+                options:
+                  - { label: "Resolvable — collapses on hover", value: resolvable }
+                  - { label: "Unknown — permanent scramble", value: unknown }
+              - { name: title, label: Title, widget: string, required: false, hint: "Leave blank for Unknown cards." }
+              - { name: description, label: Description, widget: text }
+              - { name: tag, label: Tag Label, widget: string, hint: "e.g. TTRPG World, ARG, Initialising" }
+              - { name: url, label: Link URL, widget: string, required: false, hint: "Leave blank for unbuilt cards." }
+              - name: accent_color_mode
+                label: Accent Color Mode
+                widget: select
+                options:
+                  - { label: "Palette", value: palette }
+                  - { label: "Cycle — RGB rotation", value: cycle }
+                  - { label: "Custom hex", value: custom }
+              - name: accent_color_palette
+                label: Palette Color
+                widget: select
+                required: false
+                options:
+                  - { label: "Steam — amber", value: steam }
+                  - { label: "Cyber — cyan", value: cyber }
+                  - { label: "Chaos A — magenta", value: chaos_a }
+                  - { label: "Chaos B — green", value: chaos_b }
+                  - { label: "Chaos C — red", value: chaos_c }
+                  - { label: "Chaos D — yellow", value: chaos_d }
+                  - { label: "UI — blue", value: ui }
+                hint: "Only used when mode is Palette."
+              - { name: accent_color_hex, label: Custom Hex Color, widget: string, required: false, hint: "e.g. #ff9a45. Only used when mode is Custom." }
+              - name: image_type
+                label: Image Type
+                widget: select
+                options:
+                  - { label: "Upload", value: upload }
+                  - { label: "CSS Cyber grid", value: css_cyber }
+                  - { label: "CSS Void Magenta", value: css_void_magenta }
+                  - { label: "CSS Void Green", value: css_void_green }
+                  - { label: "None", value: css_none }
+              - { name: image, label: Image, widget: image, required: false, media_folder: assets/portals, hint: "Only used when Image Type is Upload." }
+
+  # ════════════════════════════════════════
+  # EFFECTS — visual effect parameters
+  # ════════════════════════════════════════
+  - name: effects
+    label: Effects
+    description: "Tune the visual effects on the Arcaegium landing page."
+    files:
+      - name: effects_config
+        label: Effects Config
+        file: content/effects-config.json
+        fields:
+
+          - name: scanlines
+            label: "— Scanlines"
+            widget: object
+            fields:
+              - { name: h_speed_min_ms, label: Horizontal Speed Min (ms), widget: number, value_type: int, min: 5000, max: 60000 }
+              - { name: h_speed_max_ms, label: Horizontal Speed Max (ms), widget: number, value_type: int, min: 5000, max: 60000 }
+              - { name: v_speed_min_ms, label: Vertical Speed Min (ms), widget: number, value_type: int, min: 5000, max: 60000 }
+              - { name: v_speed_max_ms, label: Vertical Speed Max (ms), widget: number, value_type: int, min: 5000, max: 60000 }
+              - { name: reverse_probability, label: Reverse Direction Probability, widget: number, value_type: float, min: 0, max: 1, step: 0.05, hint: "0 = always forward, 1 = always reverse." }
+
+          - name: pings
+            label: "— Radar Pings"
+            widget: object
+            fields:
+              - { name: probability_per_frame, label: Ping Probability (per frame), widget: number, value_type: float, min: 0, max: 0.1, step: 0.001 }
+              - { name: max_simultaneous, label: Max Simultaneous Pings, widget: number, value_type: int, min: 1, max: 10 }
+              - { name: size_px, label: Ping Size (px), widget: number, value_type: int, min: 20, max: 200 }
+              - { name: lifetime_min_ms, label: Ping Lifetime Min (ms), widget: number, value_type: int, min: 500, max: 10000 }
+              - { name: lifetime_max_ms, label: Ping Lifetime Max (ms), widget: number, value_type: int, min: 500, max: 10000 }
+
+          - name: entropy
+            label: "— Entropy Display"
+            widget: object
+            fields:
+              - { name: min, label: Entropy Minimum, widget: number, value_type: float, min: 0, max: 99, step: 0.01 }
+              - { name: max, label: Entropy Maximum, widget: number, value_type: float, min: 0, max: 99, step: 0.01 }
+              - { name: update_interval_ms, label: Update Interval (ms), widget: number, value_type: int, min: 16, max: 1000, hint: "Lower = more chaotic." }
+              - { name: volatility, label: Volatility, widget: number, value_type: float, min: 0, max: 1, step: 0.01 }
+              - { name: jolt_probability, label: Jolt Probability, widget: number, value_type: float, min: 0, max: 1, step: 0.01 }
+              - { name: jolt_strength, label: Jolt Strength, widget: number, value_type: float, min: 0, max: 2, step: 0.05 }
+
+          - name: card_flicker
+            label: "— Card Flicker"
+            widget: object
+            fields:
+              - { name: interval_min_ms, label: Flicker Interval Min (ms), widget: number, value_type: int, min: 1000, max: 120000 }
+              - { name: interval_max_ms, label: Flicker Interval Max (ms), widget: number, value_type: int, min: 1000, max: 120000 }
+              - { name: initial_stagger_max_ms, label: Initial Stagger (ms), widget: number, value_type: int, min: 0, max: 30000 }
+
+          - name: stars
+            label: "— Star Field"
+            widget: object
+            fields:
+              - { name: layer_far_count, label: Far Layer Star Count, widget: number, value_type: int, min: 0, max: 500 }
+              - { name: layer_mid_count, label: Mid Layer Star Count, widget: number, value_type: int, min: 0, max: 500 }
+              - { name: layer_near_count, label: Near Layer Star Count, widget: number, value_type: int, min: 0, max: 500 }
+              - { name: layer_far_parallax, label: Far Layer Parallax Speed, widget: number, value_type: float, min: 0, max: 1, step: 0.01 }
+              - { name: layer_mid_parallax, label: Mid Layer Parallax Speed, widget: number, value_type: float, min: 0, max: 1, step: 0.01 }
+              - { name: layer_near_parallax, label: Near Layer Parallax Speed, widget: number, value_type: float, min: 0, max: 1, step: 0.01 }
+              - { name: chaos_color_probability, label: Chaos Star Probability, widget: number, value_type: float, min: 0, max: 0.5, step: 0.005 }
+
+          - name: grid
+            label: "— Background Grid"
+            widget: object
+            fields:
+              - { name: drift_duration_ms, label: Grid Drift Duration (ms), widget: number, value_type: int, min: 5000, max: 60000 }
+              - { name: drift_opacity, label: Grid Drift Opacity, widget: number, value_type: float, min: 0, max: 1, step: 0.05 }
+
+  # ════════════════════════════════════════
+  # SITE — page copy and meta
+  # ════════════════════════════════════════
+  - name: site
+    label: Site
+    description: "Page-level copy, meta tags, and HUD text."
+    files:
+      - name: site_config
+        label: Site Config
+        file: content/site-config.json
+        fields:
+
+          - name: meta
+            label: "— Meta"
+            widget: object
+            fields:
+              - { name: title, label: Page Title, widget: string }
+              - { name: description, label: Meta Description, widget: text }
+
+          - name: header
+            label: "— Header"
+            widget: object
+            fields:
+              - { name: tagline_line1, label: Tagline Line 1, widget: string }
+              - { name: tagline_line2, label: Tagline Line 2, widget: string }
+              - { name: tagline_line3, label: Tagline Line 3, widget: string }
+              - { name: intro_text, label: Intro Text, widget: text }
+              - { name: coord_left, label: Coordinate Bar Left, widget: string }
+              - { name: coord_center, label: Coordinate Bar Center, widget: string }
+              - { name: coord_right, label: Coordinate Bar Right, widget: string }
+
+          - name: portals_section
+            label: "— Portals Section"
+            widget: object
+            fields:
+              - { name: label, label: Section Label, widget: string }
+
+          - name: hud_footer
+            label: "— HUD Footer"
+            widget: object
+            fields:
+              - { name: status_label, label: Status Label, widget: string }
+              - { name: github_url, label: GitHub URL, widget: string }
+              - { name: github_label, label: GitHub Label, widget: string }
+
+          - name: footer
+            label: "— Page Footer"
+            widget: object
+            fields:
+              - { name: credit_text, label: Credit Text, widget: string }

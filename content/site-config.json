@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "title": "ARCAEGIUM — Interdimensional Nexus",
+    "description": "A nexus of worlds. Each portal leads to a world assembled from story and mechanics."
+  },
+  "header": {
+    "tagline_line1": "Interdimensional Nexus",
+    "tagline_line2": "Archive of Worlds",
+    "tagline_line3": "Engine of Play",
+    "intro_text": "A waystation at the convergence of realities. Each portal leads to a world assembled from story and mechanics. The structure holds — mostly.",
+    "coord_left": "RA 14h 29m 43s",
+    "coord_center": "DIM-RIFT // 0xC7FF",
+    "coord_right": "DEC +02° 10′ 26″"
+  },
+  "portals_section": {
+    "label": "Registered Gateways"
+  },
+  "hud_footer": {
+    "status_label": "NEXUS STABLE",
+    "github_url": "https://github.com/Arcaegium",
+    "github_label": "ARCAEGIUM // github.com/Arcaegium"
+  },
+  "footer": {
+    "credit_text": "Built by Arcaegium · Story × Mechanics · All realities reserved"
+  }
+}
