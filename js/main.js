@@ -678,17 +678,19 @@ function initWorkshopTitle() {
       });
     }
 
-    /* S: sinusoidal chain from top to bottom of S letter space */
-    const sy1 = CAP_Y + SH * 0.06;
-    const sy2 = BASELINE - SH * 0.04;
-    const sPts = [];
-    for (let i = 0; i <= 72; i++) {
-      const t = i / 72;
-      sPts.push({
-        x: lS.cx + S_AMP * Math.sin(t * Math.PI * 2 + Math.PI),
-        y: sy1 + (sy2 - sy1) * t,
-      });
-    }
+    /* S: figure-8 path — upper gear top arc + crossing + lower gear bottom arc + return
+       Chain wraps around the OUTSIDE of both gears making the S contour visible */
+    const CR_s = S_R + 2;
+    const sPts = [
+      /* top arc of upper gear: left → over top → right (chain goes over the outer top of S) */
+      ...arcPts(lS.cx, SG1Y, CR_s, Math.PI, Math.PI * 2, 18),
+      /* crossing diagonal: right of upper → left of lower (the S inflection) */
+      { x: lS.cx - CR_s, y: SG2Y },
+      /* bottom arc of lower gear: left → under bottom → right (chain goes under outer bottom of S) */
+      ...arcPts(lS.cx, SG2Y, CR_s, Math.PI, 0, 18),
+      /* return crossing: right of lower → left of upper (inner return, hidden by gears) */
+      { x: lS.cx - CR_s, y: SG1Y },
+    ];
 
     const LINK_L = FS * 0.052;
 
@@ -712,15 +714,15 @@ function initWorkshopTitle() {
 
       const t   = ts * 0.001;
       const ω   = 0.34;
-      const o1A =  t * ω;
+      const o1A = -t * ω;
       const o2A = -t * ω;
-      const pA  = -t * ω * (O_R / P_R);
-      const sA1 =  t * ω * 2.2;
-      const sA2 = -t * ω * 2.2;
+      const pA  =  t * ω * (O_R / P_R);
+      const sA1 = -t * ω * 2.2;
+      const sA2 =  t * ω * 2.2;
       const crA =  t * 1.05;
 
-      const mPh  = (t * O_R * ω) % LINK_L;
-      const sPh  = (t * S_R * ω * 2.2) % LINK_L;
+      const mPh  = (-(t * O_R * ω) % LINK_L + LINK_L) % LINK_L;
+      const sPh  = (-(t * S_R * ω * 2.2) % LINK_L + LINK_L) % LINK_L;
       const o2Ph = mPh;
 
       /* main chain */
