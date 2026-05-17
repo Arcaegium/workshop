@@ -611,12 +611,9 @@ function initGlitchLayer() {
 
 /* ============================================================
    WORKSHOP TITLE — animated mechanical canvas
-   W O R K S H O P
-   O1: brass gear CW   O2: brass gear CCW
-   S:  sinusoidal chain through two stacked gears
-   P:  iron bowl gear + ratchet pawl leg
-   W:  text + small crank above inner valley
-   R K H: static text
+   One contiguous brass chain runs right→left through all 12
+   node gears plus S gears and O1.
+   W K H rendered behind chain. R rendered in front.
    ============================================================ */
 function initWorkshopTitle() {
   const h1 = document.getElementById('mainTitle');
@@ -635,172 +632,44 @@ function initWorkshopTitle() {
     const W  = (cv.parentElement || document.body).clientWidth || 800;
     const FS = Math.min(Math.round(W * 0.086), 104);
     const CH = Math.round(FS * 2.05);
-    cv.width  = W;
-    cv.height = CH;
+    cv.width = W; cv.height = CH;
     const ctx = cv.getContext('2d');
 
-    /* ── palette ── */
-    const BR   = '#c8860a';
-    const BR_L = '#e0a830';
-    const BR_D = '#7a4e06';
-    const IR   = '#2c2218';
-    const IR_L = '#483c30';
-    const TX   = '#f0e4c8';
+    const BR = '#c8860a', BR_L = '#e0a830', BR_D = '#7a4e06';
+    const IR = '#2c2218', IR_L = '#483c30', TX = '#f0e4c8';
 
-    /* ── letter layout ── */
     ctx.font = `900 ${FS}px Orbitron, monospace`;
-    const WORD = 'WORKSHOP';
-    const GAP  = FS * 0.055;
-    const lms  = WORD.split('').map(ch => ({ ch, w: ctx.measureText(ch).width }));
+    const WORD = 'WORKSHOP', GAP = FS * 0.055;
+    const lms = WORD.split('').map(ch => ({ ch, w: ctx.measureText(ch).width }));
     const totW = lms.reduce((s, l) => s + l.w + GAP, -GAP);
     let xc = (W - totW) / 2;
     lms.forEach(l => { l.x = xc; l.cx = xc + l.w / 2; xc += l.w + GAP; });
 
-    const BASELINE = CH * 0.83;
-    const CAP_Y    = BASELINE - FS * 0.86;
-
-    /* letter refs */
+    const BASELINE = CH * 0.83, CAP_Y = BASELINE - FS * 0.86, SH = BASELINE - CAP_Y;
     const [lW, lO1, lR, lK, lS, lH, lO2, lP] = lms;
 
-    /* gear sizes */
-    const O_R  = FS * 0.40;
-    const O_Y  = BASELINE - O_R - 1;
-    const P_R  = FS * 0.26;
-    const P_CX = lP.x + lP.w * 0.60;
-    const P_Y  = CAP_Y + (BASELINE - CAP_Y) * 0.30;
-    const S_R  = FS * 0.14;
-    const SH   = BASELINE - CAP_Y;
-    const SG1Y = CAP_Y + SH * 0.28;
-    const SG2Y = CAP_Y + SH * 0.72;
-    const S_AMP = lS.w * 0.44;
-    const P_TEETH = 10;
+    const O_R = FS * 0.40, O_Y = BASELINE - O_R - 1;
+    const P_R = FS * 0.26, P_CX = lP.x + lP.w * 0.60, P_Y = CAP_Y + SH * 0.30;
+    const S_R = FS * 0.14, SG1Y = CAP_Y + SH * 0.28, SG2Y = CAP_Y + SH * 0.72;
+    const P_TEETH = 10, GR = FS * 0.055, GR2 = FS * 0.115;
+    const H_BAR_Y = CAP_Y + SH * 0.50, H_LS_X = lH.x + lH.w * 0.09;
 
-    /* ── helpers ── */
+    const gs = {
+      1:  { x: lW.x - GR2 * 3.1,           y: O_Y,                 r: GR   },
+      2:  { x: lW.x - GR2 * 1.1,            y: O_Y,                 r: GR2  },
+      3:  { x: lW.x + GR * 1.4,             y: CAP_Y + GR * 1.4,    r: GR   },
+      4:  { x: lW.x + lW.w * 0.26,          y: BASELINE - GR * 1.2, r: GR   },
+      5:  { x: lW.cx,                        y: CAP_Y + SH * 0.32,   r: GR   },
+      6:  { x: lW.x + lW.w * 0.74,          y: BASELINE - GR * 1.2, r: GR   },
+      7:  { x: lW.x + lW.w - GR * 1.4,      y: CAP_Y + GR * 1.4,    r: GR   },
+      8:  { x: lK.x + lK.w * 0.40,          y: CAP_Y + SH * 0.50,   r: GR   },
+      9:  { x: lK.x + lK.w * 0.88,          y: BASELINE - GR,        r: GR   },
+      10: { x: H_LS_X,                       y: CAP_Y + GR * 1.4,    r: GR   },
+      11: { x: H_LS_X,                       y: H_BAR_Y,             r: GR   },
+      12: { x: lH.x + lH.w * 0.88,          y: H_BAR_Y,             r: GR   },
+    };
 
-    /* S gears — classic round-tooth (row 1 col 2 style) */
-    function gearStd(cx, cy, R, teeth, ang, col, rimCol) {
-      const iR = R * 0.72, hR = R * 0.26;
-      ctx.beginPath();
-      for (let i = 0; i < teeth * 2; i++) {
-        const a = (i / (teeth * 2)) * Math.PI * 2 + ang;
-        const r = i % 2 === 0 ? R : iR;
-        i === 0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
-                : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
-      }
-      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
-      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.2; ctx.stroke(); }
-      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(1.5, R*0.08); ctx.lineCap = 'round';
-      for (let i = 0; i < 4; i++) {
-        const a = i*Math.PI*0.5 + ang;
-        ctx.beginPath();
-        ctx.moveTo(cx+Math.cos(a)*hR*1.1, cy+Math.sin(a)*hR*1.1);
-        ctx.lineTo(cx+Math.cos(a)*iR*0.82, cy+Math.sin(a)*iR*0.82);
-        ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx,cy,hR*0.42,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
-    }
-
-    /* O1 (Work) — flat-top rectangular teeth (row 2 col 2 style) */
-    function gearFlat(cx, cy, R, teeth, ang, col, rimCol) {
-      const iR = R * 0.67, hR = R * 0.25;
-      const tw = (Math.PI / teeth) * 0.60;
-      ctx.beginPath();
-      for (let i = 0; i < teeth; i++) {
-        const a = (i / teeth) * Math.PI * 2 + ang;
-        const a1 = a - tw, a2 = a + tw;
-        if (i === 0) ctx.moveTo(cx+Math.cos(a1)*iR, cy+Math.sin(a1)*iR);
-        else ctx.lineTo(cx+Math.cos(a1)*iR, cy+Math.sin(a1)*iR);
-        ctx.lineTo(cx+Math.cos(a1)*R, cy+Math.sin(a1)*R);
-        ctx.arc(cx, cy, R, a1, a2);
-        ctx.lineTo(cx+Math.cos(a2)*iR, cy+Math.sin(a2)*iR);
-      }
-      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
-      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.5; ctx.stroke(); }
-      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(3, R*0.13); ctx.lineCap = 'round';
-      for (let i = 0; i < 4; i++) {
-        const a = i*Math.PI*0.5 + ang + Math.PI*0.12;
-        ctx.beginPath();
-        ctx.moveTo(cx+Math.cos(a)*hR*1.2, cy+Math.sin(a)*hR*1.2);
-        ctx.lineTo(cx+Math.cos(a)*iR*0.78, cy+Math.sin(a)*iR*0.78);
-        ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx,cy,hR*0.45,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
-    }
-
-    /* O2 (shOp) — 3-spoke ring wheel, large open center (row 2 col 4 / row 3 col 2 style) */
-    function gearRing(cx, cy, R, teeth, ang, col, rimCol) {
-      const iR = R * 0.70, hR = R * 0.44;
-      ctx.beginPath();
-      for (let i = 0; i < teeth * 2; i++) {
-        const a = (i / (teeth * 2)) * Math.PI * 2 + ang;
-        const r = i % 2 === 0 ? R : iR;
-        i === 0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
-                : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
-      }
-      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
-      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.5; ctx.stroke(); }
-      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(4, R*0.16); ctx.lineCap = 'round';
-      for (let i = 0; i < 3; i++) {
-        const a = (i/3)*Math.PI*2 + ang;
-        ctx.beginPath();
-        ctx.moveTo(cx+Math.cos(a)*hR*1.06, cy+Math.sin(a)*hR*1.06);
-        ctx.lineTo(cx+Math.cos(a)*iR*0.80, cy+Math.sin(a)*iR*0.80);
-        ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx,cy,hR*0.52,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
-    }
-
-    /* P bowl — pointed ratchet teeth (sharp, asymmetric feel) */
-    function gearPointed(cx, cy, R, teeth, ang, col, rimCol) {
-      const iR = R * 0.60, hR = R * 0.28;
-      ctx.beginPath();
-      for (let i = 0; i < teeth * 2; i++) {
-        const a = (i / (teeth * 2)) * Math.PI * 2 + ang;
-        const r = i % 2 === 0 ? R : iR;
-        i === 0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
-                : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
-      }
-      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
-      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.2; ctx.stroke(); }
-      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(2, R*0.09); ctx.lineCap = 'round';
-      for (let i = 0; i < 4; i++) {
-        const a = i*Math.PI*0.5 + ang;
-        ctx.beginPath();
-        ctx.moveTo(cx+Math.cos(a)*hR*1.1, cy+Math.sin(a)*hR*1.1);
-        ctx.lineTo(cx+Math.cos(a)*iR*0.80, cy+Math.sin(a)*iR*0.80);
-        ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx,cy,hR*0.40,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
-    }
-
-    function pLen(pts) {
-      let l = 0;
-      for (let i = 1; i < pts.length; i++)
-        l += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
-      return l;
-    }
-
-    function ptAt(pts, d) {
-      let acc = 0;
-      for (let i = 1; i < pts.length; i++) {
-        const seg = Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
-        if (acc + seg >= d) {
-          const t = (d - acc) / seg;
-          return {
-            x: pts[i-1].x + (pts[i].x - pts[i-1].x) * t,
-            y: pts[i-1].y + (pts[i].y - pts[i-1].y) * t,
-            a: Math.atan2(pts[i].y - pts[i-1].y, pts[i].x - pts[i-1].x)
-          };
-        }
-        acc += seg;
-      }
-      const n = pts.length - 1;
-      return { ...pts[n], a: Math.atan2(pts[n].y - pts[n-1].y, pts[n].x - pts[n-1].x) };
-    }
+    const CR_o1 = O_R + 4, CR_s = S_R + 3, LINK_L = FS * 0.052;
 
     function arcPts(cx, cy, r, a1, a2, n) {
       const pts = [];
@@ -811,170 +680,288 @@ function initWorkshopTitle() {
       return pts;
     }
 
+    function pLen(pts) {
+      let l = 0;
+      for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+      return l;
+    }
+
+    function ptAt(pts, d) {
+      let acc = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const seg = Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+        if (acc + seg >= d) {
+          const t = (d - acc) / seg;
+          return { x: pts[i-1].x+(pts[i].x-pts[i-1].x)*t, y: pts[i-1].y+(pts[i].y-pts[i-1].y)*t,
+                   a: Math.atan2(pts[i].y-pts[i-1].y, pts[i].x-pts[i-1].x) };
+        }
+        acc += seg;
+      }
+      const n2 = pts.length-1;
+      return { ...pts[n2], a: Math.atan2(pts[n2].y-pts[n2-1].y, pts[n2].x-pts[n2-1].x) };
+    }
+
     function drawChain(pts, phase, linkL, bright) {
-      const total = pLen(pts);
-      if (total < 1) return;
-      const PITCH  = linkL * 2.5;
+      const total = pLen(pts); if (total < 1) return;
+      const PITCH = linkL * 2.5;
       const offset = ((phase * PITCH) % PITCH + PITCH) % PITCH;
       for (let d = offset; d < total - linkL * 0.4; d += PITCH) {
         const p = ptAt(pts, d);
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.a);
-        const hw = linkL * 0.52, hh = linkL * 0.28;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
+        const hw = linkL*0.52, hh = linkL*0.28;
         ctx.fillStyle = bright ? BR_D : IR;
-        ctx.fillRect(-hw - 1, -hh - 1, hw * 2 + 2, hh * 2 + 2);
+        ctx.fillRect(-hw-1,-hh-1,hw*2+2,hh*2+2);
         ctx.fillStyle = bright ? BR : IR_L;
-        ctx.fillRect(-hw, -hh, hw * 2, hh * 2);
-        const pinR = hh * 0.32;
+        ctx.fillRect(-hw,-hh,hw*2,hh*2);
+        const pinR = hh*0.32;
         ctx.fillStyle = bright ? BR_D : IR;
-        ctx.beginPath(); ctx.arc(-hw + hh, 0, pinR, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(hw - hh, 0, pinR, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(-hw+hh,0,pinR,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(hw-hh,0,pinR,0,Math.PI*2); ctx.fill();
         ctx.restore();
       }
     }
 
-    /* ── path builders (precomputed) ── */
+    function gearBase(cx, cy, R, teeth, ang, sharp, col, rimCol) {
+      const iR = sharp ? R*0.60 : R*0.72, hR = R*0.26;
+      if (sharp) {
+        /* flat-top teeth */
+        const tw = (Math.PI/teeth)*0.60;
+        ctx.beginPath();
+        for (let i = 0; i < teeth; i++) {
+          const a=(i/teeth)*Math.PI*2+ang, a1=a-tw, a2=a+tw;
+          if(i===0) ctx.moveTo(cx+Math.cos(a1)*iR, cy+Math.sin(a1)*iR);
+          else ctx.lineTo(cx+Math.cos(a1)*iR, cy+Math.sin(a1)*iR);
+          ctx.lineTo(cx+Math.cos(a1)*R, cy+Math.sin(a1)*R);
+          ctx.arc(cx,cy,R,a1,a2);
+          ctx.lineTo(cx+Math.cos(a2)*iR, cy+Math.sin(a2)*iR);
+        }
+      } else {
+        ctx.beginPath();
+        for (let i = 0; i < teeth*2; i++) {
+          const a=(i/(teeth*2))*Math.PI*2+ang, r=i%2===0?R:iR;
+          i===0 ? ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)
+                : ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+        }
+      }
+      ctx.closePath(); ctx.fillStyle=col; ctx.fill();
+      if (rimCol) { ctx.strokeStyle=rimCol; ctx.lineWidth=1.5; ctx.stroke(); }
+      const spokeW = Math.max(1.5, R*0.09);
+      ctx.strokeStyle=IR; ctx.lineWidth=spokeW; ctx.lineCap='round';
+      const nSpokes = sharp ? 4 : 4;
+      for (let i=0; i<nSpokes; i++) {
+        const a = i*(Math.PI*2/nSpokes) + ang + (sharp ? Math.PI*0.12 : 0);
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*hR*1.1, cy+Math.sin(a)*hR*1.1);
+        ctx.lineTo(cx+Math.cos(a)*iR*0.80, cy+Math.sin(a)*iR*0.80);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,hR*0.42,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
+    }
 
-    /* main chain: runs at O_Y height, arcs OVER both O gears */
-    const CR = O_R + FS * 0.035;
-    const mainChainPts = [
-      { x: 0, y: O_Y },
-      { x: lO1.cx - CR, y: O_Y },
-      ...arcPts(lO1.cx, O_Y, CR, Math.PI, Math.PI * 2, 28),
-      { x: lO2.cx - CR, y: O_Y },
-      ...arcPts(lO2.cx, O_Y, CR, Math.PI, Math.PI * 2, 28),
-      { x: W, y: O_Y },
-    ];
+    const gearStd  = (cx,cy,R,t,a,c,r)  => gearBase(cx,cy,R,t,a,false,c,r);
+    const gearFlat = (cx,cy,R,t,a,c,r)  => gearBase(cx,cy,R,t,a,true ,c,r);
 
-    /* O2 → P bowl short chain */
-    const o2px1 = lO2.cx + CR * 0.62, o2py1 = O_Y + CR * 0.72;
-    const o2px2 = P_CX - P_R - 3,    o2py2 = P_Y;
+    function gearRing(cx, cy, R, teeth, ang, col, rimCol) {
+      const iR=R*0.70, hR=R*0.44;
+      ctx.beginPath();
+      for (let i=0; i<teeth*2; i++) {
+        const a=(i/(teeth*2))*Math.PI*2+ang, r=i%2===0?R:iR;
+        i===0?ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)
+             :ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+      }
+      ctx.closePath(); ctx.fillStyle=col; ctx.fill();
+      if(rimCol){ctx.strokeStyle=rimCol;ctx.lineWidth=1.5;ctx.stroke();}
+      ctx.strokeStyle=IR; ctx.lineWidth=Math.max(4,R*0.16); ctx.lineCap='round';
+      for (let i=0;i<3;i++){
+        const a=(i/3)*Math.PI*2+ang;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*hR*1.06,cy+Math.sin(a)*hR*1.06);
+        ctx.lineTo(cx+Math.cos(a)*iR*0.80,cy+Math.sin(a)*iR*0.80);
+        ctx.stroke();
+      }
+      ctx.beginPath();ctx.arc(cx,cy,hR,0,Math.PI*2);ctx.fillStyle=IR;ctx.fill();
+      ctx.beginPath();ctx.arc(cx,cy,hR*0.52,0,Math.PI*2);ctx.fillStyle=IR_L;ctx.fill();
+    }
+
+    function gearPointed(cx, cy, R, teeth, ang, col, rimCol) {
+      const iR=R*0.60, hR=R*0.28;
+      ctx.beginPath();
+      for (let i=0;i<teeth*2;i++){
+        const a=(i/(teeth*2))*Math.PI*2+ang, r=i%2===0?R:iR;
+        i===0?ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)
+             :ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+      }
+      ctx.closePath(); ctx.fillStyle=col; ctx.fill();
+      if(rimCol){ctx.strokeStyle=rimCol;ctx.lineWidth=1.2;ctx.stroke();}
+      ctx.strokeStyle=IR; ctx.lineWidth=Math.max(2,R*0.09); ctx.lineCap='round';
+      for (let i=0;i<4;i++){
+        const a=i*Math.PI*0.5+ang;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*hR*1.1,cy+Math.sin(a)*hR*1.1);
+        ctx.lineTo(cx+Math.cos(a)*iR*0.80,cy+Math.sin(a)*iR*0.80);
+        ctx.stroke();
+      }
+      ctx.beginPath();ctx.arc(cx,cy,hR,0,Math.PI*2);ctx.fillStyle=IR;ctx.fill();
+      ctx.beginPath();ctx.arc(cx,cy,hR*0.40,0,Math.PI*2);ctx.fillStyle=IR_L;ctx.fill();
+    }
+
+    /* main chain path: O2 exit → 12→11→10→S→9→8→O1→7→6→5→4→3→2→1 */
+    function buildMainChain() {
+      const pts = [], cn = GR+2, c2 = GR2+3;
+
+      pts.push({x: lO2.cx - O_R, y: O_Y});
+
+      /* → gear 12 (right end H crossbar) — arc CCW over top */
+      pts.push({x: gs[12].x+cn, y: gs[12].y});
+      pts.push(...arcPts(gs[12].x, gs[12].y, cn, 0, -Math.PI, 8));
+
+      /* → gear 11 (left end H crossbar) — arc CW right→bottom→left; exit tangent = up */
+      pts.push({x: gs[11].x+cn, y: gs[11].y});
+      pts.push(...arcPts(gs[11].x, gs[11].y, cn, 0, Math.PI, 8));
+
+      /* → gear 10 (top H left vertical) — chain arrives from below; arc bottom→left */
+      pts.push({x: gs[10].x, y: gs[10].y+cn});
+      pts.push(...arcPts(gs[10].x, gs[10].y, cn, Math.PI*0.5, Math.PI, 6));
+
+      /* → SG1 (top of S) — arc CCW over top = upper S curve */
+      pts.push({x: lS.cx+CR_s, y: SG1Y});
+      pts.push(...arcPts(lS.cx, SG1Y, CR_s, 0, -Math.PI, 14));
+
+      /* crossing SG1→SG2 */
+      pts.push({x: lS.cx+CR_s, y: SG2Y});
+
+      /* SG2 lower arc CW = lower S curve */
+      pts.push(...arcPts(lS.cx, SG2Y, CR_s, 0, Math.PI, 14));
+
+      /* → gear 9 (bottom K lower-right diagonal) */
+      pts.push({x: gs[9].x+cn, y: gs[9].y});
+      pts.push(...arcPts(gs[9].x, gs[9].y, cn, 0, -Math.PI, 8));
+
+      /* → gear 8 (K centre) — up diagonal; arc CCW over top */
+      pts.push({x: gs[8].x+cn, y: gs[8].y});
+      pts.push(...arcPts(gs[8].x, gs[8].y, cn, 0, -Math.PI, 8));
+
+      /* → O1 right side (behind R) */
+      pts.push({x: lO1.cx+CR_o1, y: O_Y});
+
+      /* O1: 3 o'clock → 12 o'clock CCW (upper-right quarter) */
+      pts.push(...arcPts(lO1.cx, O_Y, CR_o1, 0, -Math.PI*0.5, 12));
+
+      /* → gear 7 (top-right W) */
+      pts.push({x: gs[7].x+cn*0.5, y: gs[7].y-cn*0.5});
+      pts.push(...arcPts(gs[7].x, gs[7].y, cn, -Math.PI*0.25, Math.PI*0.75, 10));
+
+      /* → gear 6 (bottom-right valley W) */
+      pts.push({x: gs[6].x+cn*0.3, y: gs[6].y-cn*0.8});
+      pts.push(...arcPts(gs[6].x, gs[6].y, cn, 0, -Math.PI*0.5, 8));
+
+      /* → gear 5 (middle peak W) */
+      pts.push({x: gs[5].x+cn*0.3, y: gs[5].y+cn*0.8});
+      pts.push(...arcPts(gs[5].x, gs[5].y, cn, Math.PI*0.5, Math.PI, 8));
+
+      /* → gear 4 (bottom-left valley W) */
+      pts.push({x: gs[4].x+cn*0.3, y: gs[4].y-cn*0.8});
+      pts.push(...arcPts(gs[4].x, gs[4].y, cn, 0, -Math.PI*0.5, 8));
+
+      /* → gear 3 (top-left W) */
+      pts.push({x: gs[3].x+cn*0.5, y: gs[3].y+cn*0.5});
+      pts.push(...arcPts(gs[3].x, gs[3].y, cn, Math.PI*0.25, Math.PI, 8));
+
+      /* → gear 2 → gear 1 */
+      pts.push({x: gs[2].x+c2, y: gs[2].y});
+      pts.push(...arcPts(gs[2].x, gs[2].y, c2, 0, -Math.PI, 10));
+      pts.push({x: gs[1].x+cn, y: gs[1].y});
+      pts.push(...arcPts(gs[1].x, gs[1].y, cn, 0, -Math.PI, 6));
+
+      return pts;
+    }
+
+    const mainChainPts = buildMainChain();
+
+    /* O2→P chain (existing) */
+    const o2px1 = lO2.cx + O_R * 0.62, o2py1 = O_Y + O_R * 0.72;
+    const o2px2 = P_CX - P_R - 3,      o2py2 = P_Y;
     const o2pPts = [];
     for (let i = 0; i <= 22; i++) {
-      o2pPts.push({
-        x: o2px1 + (o2px2 - o2px1) * i / 22,
-        y: o2py1 + (o2py2 - o2py1) * i / 22,
-      });
+      o2pPts.push({ x: o2px1+(o2px2-o2px1)*i/22, y: o2py1+(o2py2-o2py1)*i/22 });
     }
 
-    /* S: figure-8 path — upper gear top arc + crossing + lower gear bottom arc + return
-       Chain wraps around the OUTSIDE of both gears making the S contour visible */
-    const CR_s = S_R + 2;
-    const sPts = [
-      /* top arc of upper gear: left → over top → right (chain goes over the outer top of S) */
-      ...arcPts(lS.cx, SG1Y, CR_s, Math.PI, Math.PI * 2, 18),
-      /* crossing diagonal: right of upper → left of lower (the S inflection) */
-      { x: lS.cx - CR_s, y: SG2Y },
-      /* bottom arc of lower gear: left → under bottom → right (chain goes under outer bottom of S) */
-      ...arcPts(lS.cx, SG2Y, CR_s, Math.PI, 0, 18),
-      /* return crossing: right of lower → left of upper (inner return, hidden by gears) */
-      { x: lS.cx - CR_s, y: SG1Y },
-    ];
-
-    const LINK_L = FS * 0.052;
-
-    /* ── crank setup ── */
-    const WCR = FS * 0.072;
-    const WCX = lW.cx + lW.w * 0.04;
-    const WCY = CAP_Y - WCR * 1.3;
-
-    /* ── ratchet pawl angle ── */
-    function pawlAng(gAng) {
-      const cycle = (Math.PI * 2) / P_TEETH;
-      const ph    = (((gAng % cycle) + cycle) % cycle) / cycle;
-      return ph < 0.72
-        ? (ph / 0.72) * 0.30
-        : 0.30 * (1 - (ph - 0.72) / 0.28);
-    }
-
-    /* ── frame ── */
     function frame(ts) {
       ctx.clearRect(0, 0, W, CH);
+      const t = ts*0.001, ω = 0.34;
+      const gA  =  t*ω*(O_R/GR), g2A = t*ω*(O_R/GR2);
+      const o1A = -t*ω, o2A = -t*ω, pA = t*ω*(O_R/P_R);
+      const sA1 =  t*ω*(O_R/S_R), sA2 = -t*ω*(O_R/S_R);
+      const mPh = (-(t*O_R*ω) % LINK_L + LINK_L) % LINK_L;
 
-      const t   = ts * 0.001;
-      const ω   = 0.34;
-      const o1A = -t * ω;
-      const o2A = -t * ω;
-      const pA  =  t * ω * (O_R / P_R);
-      const sA1 = -t * ω * 2.2;
-      const sA2 =  t * ω * 2.2;
-      const crA =  t * 1.05;
+      /* ── 1. W K H text behind chain ── */
+      ctx.font=`900 ${FS}px Orbitron, monospace`;
+      ctx.textBaseline='alphabetic'; ctx.textAlign='left'; ctx.fillStyle=TX;
+      ctx.shadowColor='rgba(200,136,10,0.38)'; ctx.shadowBlur=FS*0.10;
+      ctx.fillText('W',lW.x,BASELINE);
+      ctx.fillText('K',lK.x,BASELINE);
+      ctx.fillText('H',lH.x,BASELINE);
+      ctx.shadowBlur=0;
 
-      const mPh  = (-(t * O_R * ω) % LINK_L + LINK_L) % LINK_L;
-      const sPh  = (-(t * S_R * ω * 2.2) % LINK_L + LINK_L) % LINK_L;
-      const o2Ph = mPh;
-
-      /* main chain */
+      /* ── 2. main chain ── */
       drawChain(mainChainPts, mPh, LINK_L, true);
 
-      /* O2 → P chain */
-      drawChain(o2pPts, o2Ph, LINK_L * 0.72, false);
+      /* ── 3. O2→P chain ── */
+      drawChain(o2pPts, mPh, LINK_L*0.72, false);
 
-      /* W crank */
-      ctx.beginPath(); ctx.arc(WCX, WCY, WCR, 0, Math.PI * 2);
-      ctx.fillStyle = IR; ctx.fill();
-      ctx.beginPath(); ctx.arc(WCX, WCY, WCR * 0.52, 0, Math.PI * 2);
-      ctx.fillStyle = IR_L; ctx.fill();
-      const cpx = WCX + Math.cos(crA) * WCR * 0.56;
-      const cpy = WCY + Math.sin(crA) * WCR * 0.56;
-      ctx.beginPath(); ctx.arc(cpx, cpy, WCR * 0.20, 0, Math.PI * 2);
-      ctx.fillStyle = BR; ctx.fill();
-      const wvY = BASELINE - FS * 0.07;
-      ctx.strokeStyle = IR_L; ctx.lineWidth = WCR * 0.36; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(cpx, cpy); ctx.lineTo(WCX, wvY); ctx.stroke();
-      ctx.strokeStyle = BR_D; ctx.lineWidth = WCR * 0.13;
-      ctx.beginPath(); ctx.moveTo(cpx, cpy); ctx.lineTo(WCX, wvY); ctx.stroke();
+      /* ── 4. node gears 1-12 ── */
+      [1,2,3,4,5,6,7,8,9,10,11,12].forEach(n => {
+        const g = gs[n], ang = n%2===1 ? gA : -gA;
+        gearStd(g.x, g.y, g.r, 8, ang, BR, BR_D);
+      });
 
-      /* S chain + gears */
-      drawChain(sPts, sPh, LINK_L * 0.70, true);
+      /* ── 5. S gears ── */
       gearStd(lS.cx, SG1Y, S_R, 8, sA1, BR, BR_D);
       gearStd(lS.cx, SG2Y, S_R, 8, sA2, BR, BR_D);
 
-      /* O1 — flat-top teeth */
+      /* ── 6. O1 gearFlat ── */
       gearFlat(lO1.cx, O_Y, O_R, 8, o1A, BR, BR_D);
 
-      /* O2 — 3-spoke ring wheel */
+      /* ── 7. coupling rod O1→gear 6 ── */
+      const rodX1 = lO1.cx + Math.cos(o1A)*O_R*0.70;
+      const rodY1 = O_Y    + Math.sin(o1A)*O_R*0.70;
+      ctx.strokeStyle=BR_D; ctx.lineWidth=FS*0.028; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(rodX1,rodY1); ctx.lineTo(gs[6].x,gs[6].y); ctx.stroke();
+      ctx.strokeStyle=BR; ctx.lineWidth=FS*0.012;
+      ctx.beginPath(); ctx.moveTo(rodX1,rodY1); ctx.lineTo(gs[6].x,gs[6].y); ctx.stroke();
+      ctx.beginPath(); ctx.arc(rodX1,rodY1,FS*0.018,0,Math.PI*2);
+      ctx.fillStyle=BR_L; ctx.fill();
+
+      /* ── 8. O2 gearRing ── */
       gearRing(lO2.cx, O_Y, O_R, 12, o2A, BR, BR_D);
 
-      /* P: stem + bowl gear + pawl */
-      const stW = FS * 0.115;
-      ctx.fillStyle = TX;
-      ctx.shadowColor = 'rgba(200,136,10,0.3)'; ctx.shadowBlur = FS * 0.08;
-      ctx.fillRect(lP.x, CAP_Y, stW, BASELINE - CAP_Y);
-      ctx.shadowBlur = 0;
-      /* horizontal bridge from stem to bowl */
-      ctx.fillStyle = TX;
-      ctx.fillRect(lP.x + stW, P_Y - stW * 0.5, P_CX - P_R * 0.7 - (lP.x + stW), stW);
-      /* bowl gear */
+      /* ── 9. P stem + bowl + pawl ── */
+      const stW = FS*0.115;
+      ctx.fillStyle=TX;
+      ctx.shadowColor='rgba(200,136,10,0.3)'; ctx.shadowBlur=FS*0.08;
+      ctx.fillRect(lP.x, CAP_Y, stW, BASELINE-CAP_Y);
+      ctx.shadowBlur=0;
+      ctx.fillStyle=TX;
+      ctx.fillRect(lP.x+stW, P_Y-stW*0.5, P_CX-P_R*0.7-(lP.x+stW), stW);
       gearPointed(P_CX, P_Y, P_R, P_TEETH, pA, IR_L, BR_D);
-      /* pawl */
-      const paw = pawlAng(pA);
-      ctx.save();
-      ctx.translate(lP.x + stW, P_Y);
-      ctx.rotate(-paw);
-      ctx.fillStyle = IR_L; ctx.strokeStyle = BR; ctx.lineWidth = 1;
+      const pawCycle=(Math.PI*2)/P_TEETH;
+      const pawPhase=(((pA%pawCycle)+pawCycle)%pawCycle)/pawCycle;
+      const pawAng=pawPhase<0.72?(pawPhase/0.72)*0.30:0.30*(1-(pawPhase-0.72)/0.28);
+      ctx.save(); ctx.translate(lP.x+stW, P_Y); ctx.rotate(-pawAng);
+      ctx.fillStyle=IR_L; ctx.strokeStyle=BR; ctx.lineWidth=1;
       ctx.beginPath();
-      ctx.moveTo(0, -FS * 0.038);
-      ctx.lineTo(P_R * 0.50, -FS * 0.018);
-      ctx.lineTo(P_R * 0.48, FS * 0.048);
-      ctx.lineTo(0,  FS * 0.038);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
+      ctx.moveTo(0,-FS*0.038); ctx.lineTo(P_R*0.50,-FS*0.018);
+      ctx.lineTo(P_R*0.48,FS*0.048); ctx.lineTo(0,FS*0.038);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.restore();
 
-      /* text letters — drawn last so they sit on top of chain */
-      ctx.font = `900 ${FS}px Orbitron, monospace`;
-      ctx.textBaseline = 'alphabetic';
-      ctx.textAlign    = 'left';
-      ctx.fillStyle    = TX;
-      ctx.shadowColor  = 'rgba(200,136,10,0.38)';
-      ctx.shadowBlur   = FS * 0.10;
-      ctx.fillText('W', lW.x, BASELINE);
+      /* ── 10. R text in front ── */
+      ctx.font=`900 ${FS}px Orbitron, monospace`;
+      ctx.textBaseline='alphabetic'; ctx.textAlign='left'; ctx.fillStyle=TX;
+      ctx.shadowColor='rgba(200,136,10,0.38)'; ctx.shadowBlur=FS*0.10;
       ctx.fillText('R', lR.x, BASELINE);
-      ctx.fillText('K', lK.x, BASELINE);
-      ctx.fillText('H', lH.x, BASELINE);
-      ctx.shadowBlur = 0;
+      ctx.shadowBlur=0;
 
       raf = requestAnimationFrame(frame);
     }
@@ -991,9 +978,7 @@ function initWorkshopTitle() {
   });
 }
 
-/* ============================================================
-   CARD TITLE SCRAMBLE — re-enable with renderPortals()
-   ============================================================ */
+
 function initCardScrambles() {
   const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefΔΨΩλφ∞≠±0123456789!@#$%^&*';
   const CHAOS  = ['#c724ff','#39ff6e','#ff2d6f','#00ffe7','#ffe847','#ff9a45'];
