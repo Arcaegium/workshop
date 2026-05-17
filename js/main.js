@@ -220,11 +220,11 @@ function initBrickWall() {
   /* ── window layout ──
      One row of windows per ROW_H pixels of wall height.
      Compute enough rows to cover the full canvas. */
-  const WIN_W  = Math.round(W * 0.22);
-  const WIN_H  = 270;
+  const WIN_W  = Math.round(W * 0.32);
+  const WIN_H  = 380;
   const N_COLS = W >= 700 ? 2 : 1;
-  const ROW_H  = 520;          /* vertical distance between window rows */
-  const FIRST_Y = 155;         /* top of first window row's rectangular body */
+  const ROW_H  = 640;          /* vertical distance between window rows */
+  const FIRST_Y = 160;         /* top of first window row's rectangular body */
 
   const wins = [];
   for (let row = 0; FIRST_Y + row * ROW_H < H + WIN_H; row++) {
