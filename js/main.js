@@ -40,11 +40,12 @@ async function boot() {
 
   applySiteMeta();
   renderHeader();
-  /* renderPortals() — hidden, re-enable when ready to show apparatus cards */
+  renderPortals();
   renderHudFooter();
   renderFooter();
 
   initBrickWall();
+  initGlitchLayer();
   initWorkshopTitle();
   /* initCardScrambles() and initCardFlicker() re-enable with renderPortals() */
   initStatusBar();
@@ -219,20 +220,30 @@ function initBrickWall() {
 
   /* ── window layout ──
      One row of windows per ROW_H pixels of wall height.
-     Compute enough rows to cover the full canvas. */
-  const WIN_W  = Math.round(W * 0.32);
-  const WIN_H  = 380;
-  const N_COLS = W >= 700 ? 2 : 1;
-  const ROW_H  = 640;          /* vertical distance between window rows */
-  const FIRST_Y = 160;         /* top of first window row's rectangular body */
+     Gaps are measured in brick units: 4 bricks horizontal, 4 courses vertical. */
+  const N_COLS  = W >= 700 ? 2 : 1;
+  const B_GAP_H = 4 * BP;    /* 4 bricks wide between columns = 216px */
+  const B_GAP_V = 4 * CH;    /* 4 brick courses between rows   = 104px */
+  const B_OUTER = 4 * BP;    /* 4 bricks outer margin each side */
+  const WIN_W   = N_COLS > 1
+    ? Math.floor((W - B_GAP_H - 2 * B_OUTER) / 2)
+    : Math.floor(W - 2 * B_OUTER);
+  const WIN_H   = Math.min(Math.round(WIN_W * 1.35), Math.round(window.innerHeight * 0.58));
+  const ROW_H   = WIN_H + B_GAP_V;
+  const FIRST_Y = B_GAP_V;
+
+  /* window x positions: centered within each column */
+  const col0X = B_OUTER;                        /* left column x start */
+  const col1X = B_OUTER + WIN_W + B_GAP_H;      /* right column x start */
 
   const wins = [];
   for (let row = 0; FIRST_Y + row * ROW_H < H + WIN_H; row++) {
     for (let col = 0; col < N_COLS; col++) {
-      const cx = W * (col + 0.5) / N_COLS;
+      const wx = col === 0 ? col0X : col1X;
+      const cx = wx + WIN_W / 2;
       wins.push({
         cx,
-        x:   cx - WIN_W / 2,
+        x:   wx,
         y:   FIRST_Y + row * ROW_H,
         w:   WIN_W,
         h:   WIN_H,
@@ -426,11 +437,7 @@ function initBrickWall() {
     ctx.fillRect(x1, y - pr, x2 - x1, pr * 0.5);
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fillRect(x1, y + pr * 0.5, x2 - x1, pr * 0.5);
-    /* fittings — seeded so they land consistently */
-    const step = ph(x1, y, 11) * 30 + 70;
-    for (let bx = x1 + step; bx < x2 - 20; bx += step + ph(bx, y, 12) * 40) {
-      ph(bx, y, 13) < 0.55 ? flange(bx, y, pr) : bracket(bx, y, pr);
-    }
+    /* fittings only drawn at pipe intersections via tjoint() calls */
   }
 
   function vpipe(x, y1, y2, pr) {
@@ -504,6 +511,105 @@ window.addEventListener('resize', () => {
 });
 
 /* ============================================================
+   GLITCH LAYER — masks the video loop seam
+   Canvas at z-index 1 (between video and brick wall).
+   Detects the video loop reset and plays a brief glitch burst.
+   ============================================================ */
+function initGlitchLayer() {
+  const video = document.getElementById('bg-video');
+  const cv    = document.getElementById('glitchCanvas');
+  if (!video || !cv) return;
+
+  const ctx = cv.getContext('2d');
+
+  function resize() {
+    cv.width  = window.innerWidth;
+    cv.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let glitching = false;
+  let glitchStart = 0;
+  let glitchRaf   = null;
+  let triggered   = false;
+  let lastT       = 0;
+
+  const GLITCH_MS = 480;
+
+  function startGlitch() {
+    if (glitching) return;
+    glitching  = true;
+    glitchStart = performance.now();
+    if (glitchRaf) cancelAnimationFrame(glitchRaf);
+    runGlitch();
+  }
+
+  function runGlitch(ts) {
+    if (!ts) ts = performance.now();
+    const elapsed  = ts - glitchStart;
+    const progress = Math.min(elapsed / GLITCH_MS, 1);
+
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const W = cv.width, H = cv.height;
+    const intensity = Math.sin(progress * Math.PI); /* bell curve, peaks at middle */
+
+    /* scanline tears */
+    const tears = Math.floor(2 + intensity * 7);
+    for (let i = 0; i < tears; i++) {
+      if (Math.random() > 0.5) continue;
+      const ty  = Math.random() * H;
+      const th  = Math.random() * H * 0.06 + 3;
+      const off = (Math.random() - 0.5) * 55 * intensity;
+      ctx.fillStyle = `rgba(${Math.floor(Math.random()*50)},${Math.floor(Math.random()*15)},0,${0.28 + Math.random()*0.35*intensity})`;
+      ctx.fillRect(off, ty, W, th);
+    }
+
+    /* RGB fringe */
+    if (Math.random() < 0.35 * intensity) {
+      ctx.fillStyle = `rgba(255,0,0,${0.04 * intensity})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (Math.random() < 0.25 * intensity) {
+      ctx.fillStyle = `rgba(0,180,255,${0.03 * intensity})`;
+      ctx.fillRect(4, 0, W, H);
+    }
+
+    /* dark crush bands */
+    if (Math.random() < 0.45 * intensity) {
+      const by = Math.random() * H;
+      ctx.fillStyle = `rgba(0,0,0,${0.55 * intensity})`;
+      ctx.fillRect(0, by, W, Math.random() * 28 + 4);
+    }
+
+    /* brief white flash at the seam moment */
+    if (progress < 0.18 && Math.random() < 0.12) {
+      ctx.fillStyle = `rgba(255,255,255,${0.10 * (1 - progress / 0.18)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    if (progress < 1) {
+      glitchRaf = requestAnimationFrame(runGlitch);
+    } else {
+      ctx.clearRect(0, 0, W, H);
+      glitching = false;
+    }
+  }
+
+  /* detect loop seam: trigger when near end, reset when back at start */
+  video.addEventListener('timeupdate', () => {
+    const cur = video.currentTime;
+    const dur = video.duration || 5;
+    if (!triggered && cur > dur - 0.45) {
+      triggered = true;
+      startGlitch();
+    }
+    if (cur < 0.4) triggered = false;
+    lastT = cur;
+  });
+}
+
+/* ============================================================
    WORKSHOP TITLE — animated mechanical canvas
    W O R K S H O P
    O1: brass gear CW   O2: brass gear CCW
@@ -570,31 +676,105 @@ function initWorkshopTitle() {
     const P_TEETH = 10;
 
     /* ── helpers ── */
-    function drawGear(cx, cy, R, teeth, ang, col, rimCol) {
-      const iR = R * 0.65, hR = R * 0.27;
+
+    /* S gears — classic round-tooth (row 1 col 2 style) */
+    function gearStd(cx, cy, R, teeth, ang, col, rimCol) {
+      const iR = R * 0.72, hR = R * 0.26;
       ctx.beginPath();
       for (let i = 0; i < teeth * 2; i++) {
         const a = (i / (teeth * 2)) * Math.PI * 2 + ang;
         const r = i % 2 === 0 ? R : iR;
-        i === 0
-          ? ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r)
-          : ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        i === 0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
+                : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
       }
-      ctx.closePath();
-      ctx.fillStyle = col; ctx.fill();
-      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.5; ctx.stroke(); }
-      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(2, R * 0.085); ctx.lineCap = 'round';
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.2; ctx.stroke(); }
+      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(1.5, R*0.08); ctx.lineCap = 'round';
       for (let i = 0; i < 4; i++) {
-        const a = i * Math.PI * 0.5 + ang;
+        const a = i*Math.PI*0.5 + ang;
         ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(a) * hR * 1.1, cy + Math.sin(a) * hR * 1.1);
-        ctx.lineTo(cx + Math.cos(a) * iR * 0.82, cy + Math.sin(a) * iR * 0.82);
+        ctx.moveTo(cx+Math.cos(a)*hR*1.1, cy+Math.sin(a)*hR*1.1);
+        ctx.lineTo(cx+Math.cos(a)*iR*0.82, cy+Math.sin(a)*iR*0.82);
         ctx.stroke();
       }
-      ctx.beginPath(); ctx.arc(cx, cy, hR, 0, Math.PI * 2);
-      ctx.fillStyle = IR; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx, cy, hR * 0.42, 0, Math.PI * 2);
-      ctx.fillStyle = IR_L; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,hR*0.42,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
+    }
+
+    /* O1 (Work) — flat-top rectangular teeth (row 2 col 2 style) */
+    function gearFlat(cx, cy, R, teeth, ang, col, rimCol) {
+      const iR = R * 0.67, hR = R * 0.25;
+      const tw = (Math.PI / teeth) * 0.60;
+      ctx.beginPath();
+      for (let i = 0; i < teeth; i++) {
+        const a = (i / teeth) * Math.PI * 2 + ang;
+        const a1 = a - tw, a2 = a + tw;
+        if (i === 0) ctx.moveTo(cx+Math.cos(a1)*iR, cy+Math.sin(a1)*iR);
+        else ctx.lineTo(cx+Math.cos(a1)*iR, cy+Math.sin(a1)*iR);
+        ctx.lineTo(cx+Math.cos(a1)*R, cy+Math.sin(a1)*R);
+        ctx.arc(cx, cy, R, a1, a2);
+        ctx.lineTo(cx+Math.cos(a2)*iR, cy+Math.sin(a2)*iR);
+      }
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.5; ctx.stroke(); }
+      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(3, R*0.13); ctx.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const a = i*Math.PI*0.5 + ang + Math.PI*0.12;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*hR*1.2, cy+Math.sin(a)*hR*1.2);
+        ctx.lineTo(cx+Math.cos(a)*iR*0.78, cy+Math.sin(a)*iR*0.78);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,hR*0.45,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
+    }
+
+    /* O2 (shOp) — 3-spoke ring wheel, large open center (row 2 col 4 / row 3 col 2 style) */
+    function gearRing(cx, cy, R, teeth, ang, col, rimCol) {
+      const iR = R * 0.70, hR = R * 0.44;
+      ctx.beginPath();
+      for (let i = 0; i < teeth * 2; i++) {
+        const a = (i / (teeth * 2)) * Math.PI * 2 + ang;
+        const r = i % 2 === 0 ? R : iR;
+        i === 0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
+                : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
+      }
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.5; ctx.stroke(); }
+      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(4, R*0.16); ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const a = (i/3)*Math.PI*2 + ang;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*hR*1.06, cy+Math.sin(a)*hR*1.06);
+        ctx.lineTo(cx+Math.cos(a)*iR*0.80, cy+Math.sin(a)*iR*0.80);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,hR*0.52,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
+    }
+
+    /* P bowl — pointed ratchet teeth (sharp, asymmetric feel) */
+    function gearPointed(cx, cy, R, teeth, ang, col, rimCol) {
+      const iR = R * 0.60, hR = R * 0.28;
+      ctx.beginPath();
+      for (let i = 0; i < teeth * 2; i++) {
+        const a = (i / (teeth * 2)) * Math.PI * 2 + ang;
+        const r = i % 2 === 0 ? R : iR;
+        i === 0 ? ctx.moveTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r)
+                : ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
+      }
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      if (rimCol) { ctx.strokeStyle = rimCol; ctx.lineWidth = 1.2; ctx.stroke(); }
+      ctx.strokeStyle = IR; ctx.lineWidth = Math.max(2, R*0.09); ctx.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const a = i*Math.PI*0.5 + ang;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*hR*1.1, cy+Math.sin(a)*hR*1.1);
+        ctx.lineTo(cx+Math.cos(a)*iR*0.80, cy+Math.sin(a)*iR*0.80);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(cx,cy,hR,0,Math.PI*2); ctx.fillStyle=IR; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,hR*0.40,0,Math.PI*2); ctx.fillStyle=IR_L; ctx.fill();
     }
 
     function pLen(pts) {
@@ -748,14 +928,14 @@ function initWorkshopTitle() {
 
       /* S chain + gears */
       drawChain(sPts, sPh, LINK_L * 0.70, true);
-      drawGear(lS.cx, SG1Y, S_R, 8, sA1, BR, BR_D);
-      drawGear(lS.cx, SG2Y, S_R, 8, sA2, BR, BR_D);
+      gearStd(lS.cx, SG1Y, S_R, 8, sA1, BR, BR_D);
+      gearStd(lS.cx, SG2Y, S_R, 8, sA2, BR, BR_D);
 
-      /* O1 */
-      drawGear(lO1.cx, O_Y, O_R, 12, o1A, BR, BR_D);
+      /* O1 — flat-top teeth */
+      gearFlat(lO1.cx, O_Y, O_R, 8, o1A, BR, BR_D);
 
-      /* O2 */
-      drawGear(lO2.cx, O_Y, O_R, 12, o2A, BR, BR_D);
+      /* O2 — 3-spoke ring wheel */
+      gearRing(lO2.cx, O_Y, O_R, 12, o2A, BR, BR_D);
 
       /* P: stem + bowl gear + pawl */
       const stW = FS * 0.115;
@@ -767,7 +947,7 @@ function initWorkshopTitle() {
       ctx.fillStyle = TX;
       ctx.fillRect(lP.x + stW, P_Y - stW * 0.5, P_CX - P_R * 0.7 - (lP.x + stW), stW);
       /* bowl gear */
-      drawGear(P_CX, P_Y, P_R, P_TEETH, pA, IR_L, BR_D);
+      gearPointed(P_CX, P_Y, P_R, P_TEETH, pA, IR_L, BR_D);
       /* pawl */
       const paw = pawlAng(pA);
       ctx.save();
