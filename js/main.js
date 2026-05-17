@@ -599,7 +599,7 @@ function initGlitchLayer() {
   /* detect loop seam: trigger when near end, reset when back at start */
   video.addEventListener('timeupdate', () => {
     const cur = video.currentTime;
-    const dur = video.duration || 5;
+    const dur = video.duration || 10;
     if (!triggered && cur > dur - 0.45) {
       triggered = true;
       startGlitch();
