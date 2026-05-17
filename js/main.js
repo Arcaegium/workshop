@@ -810,6 +810,15 @@ function initWorkshopTitle() {
     function buildMainChain() {
       const pts = [], cn = GR+2, c2 = GR2+3;
 
+      /* right screen edge → P bowl → O2 (integrates the old separate chain) */
+      pts.push({x: W, y: P_Y});
+      pts.push({x: P_CX + P_R + 2, y: P_Y});
+      /* arc around P bowl: right (0) → bottom → left (π) */
+      pts.push(...arcPts(P_CX, P_Y, P_R+2, 0, Math.PI, 8));
+      /* diagonal P left → O2 lower-right */
+      pts.push({x: lO2.cx + O_R*0.62, y: O_Y + O_R*0.72});
+      /* arc around O2 lower portion: lower-right → left */
+      pts.push(...arcPts(lO2.cx, O_Y, O_R+2, Math.PI*0.4, Math.PI, 8));
       pts.push({x: lO2.cx - O_R, y: O_Y});
 
       /* → gear 12 (right end H crossbar) — arc CCW over top */
@@ -873,19 +882,13 @@ function initWorkshopTitle() {
       pts.push(...arcPts(gs[2].x, gs[2].y, c2, 0, -Math.PI, 10));
       pts.push({x: gs[1].x+cn, y: gs[1].y});
       pts.push(...arcPts(gs[1].x, gs[1].y, cn, 0, -Math.PI, 6));
+      /* extend to left screen edge so chain looks like it exits off-screen */
+      pts.push({x: 0, y: gs[1].y});
 
       return pts;
     }
 
     const mainChainPts = buildMainChain();
-
-    /* O2→P chain (existing) */
-    const o2px1 = lO2.cx + O_R * 0.62, o2py1 = O_Y + O_R * 0.72;
-    const o2px2 = P_CX - P_R - 3,      o2py2 = P_Y;
-    const o2pPts = [];
-    for (let i = 0; i <= 22; i++) {
-      o2pPts.push({ x: o2px1+(o2px2-o2px1)*i/22, y: o2py1+(o2py2-o2py1)*i/22 });
-    }
 
     function frame(ts) {
       ctx.clearRect(0, 0, W, CH);
@@ -893,7 +896,7 @@ function initWorkshopTitle() {
       const gA  =  t*ω*(O_R/GR), g2A = t*ω*(O_R/GR2);
       const o1A = -t*ω, o2A = -t*ω, pA = t*ω*(O_R/P_R);
       const sA1 =  t*ω*(O_R/S_R), sA2 = -t*ω*(O_R/S_R);
-      const mPh = (-(t*O_R*ω) % LINK_L + LINK_L) % LINK_L;
+      const mPh = (t*O_R*ω) % LINK_L;
 
       /* ── 1. W K H text behind chain ── */
       ctx.font=`900 ${FS}px Orbitron, monospace`;
@@ -906,9 +909,6 @@ function initWorkshopTitle() {
 
       /* ── 2. main chain ── */
       drawChain(mainChainPts, mPh, LINK_L, true);
-
-      /* ── 3. O2→P chain ── */
-      drawChain(o2pPts, mPh, LINK_L*0.72, false);
 
       /* ── 4. node gears 1-12 ── */
       [1,2,3,4,5,6,7,8,9,10,11,12].forEach(n => {
