@@ -973,6 +973,7 @@ function initWorkshopTitle() {
 
     const mainChainPts = buildMainChain();
 
+    let pistonStep      = 0;
     let pistonLastTooth = -1;
     let isHammering    = false;
     let hammerStartT   = 0;
