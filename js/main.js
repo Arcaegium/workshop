@@ -655,16 +655,16 @@ function initWorkshopTitle() {
     const H_BAR_Y = CAP_Y + SH * 0.50, H_LS_X = lH.x + lH.w * 0.09;
 
     const gs = {
-      1:  { x: lW.x - GR2 * 3.1,           y: O_Y,                 r: GR   },
-      2:  { x: lW.x - GR2 * 1.1,            y: O_Y,                 r: GR2  },
+      1:  { x: lW.x - O_R * 4.5,            y: O_Y,                 r: GR   },
+      2:  { x: lW.x - O_R * 2.5,            y: O_Y,                 r: O_R  },
       3:  { x: lW.x + GR * 1.4,             y: CAP_Y + GR * 1.4,    r: GR   },
       4:  { x: lW.x + lW.w * 0.26,          y: BASELINE - GR * 1.2, r: GR   },
       5:  { x: lW.cx,                        y: CAP_Y + SH * 0.32,   r: GR   },
       6:  { x: lW.x + lW.w * 0.74,          y: BASELINE - GR * 1.2, r: GR   },
       7:  { x: lW.x + lW.w - GR * 1.4,      y: CAP_Y + GR * 1.4,    r: GR   },
-      8:  { x: lK.x + lK.w * 0.40,          y: CAP_Y + SH * 0.50,   r: GR   },
+      8:  { x: lK.x + lK.w * 0.40,          y: CAP_Y + SH * 0.62,   r: GR   },
       9:  { x: lK.x + lK.w * 0.88,          y: BASELINE - GR,        r: GR   },
-      10: { x: H_LS_X,                       y: CAP_Y + GR * 1.4,    r: GR   },
+      10: { x: H_LS_X,                       y: CAP_Y + SH * 0.15,   r: GR   },
       11: { x: H_LS_X,                       y: H_BAR_Y,             r: GR   },
       12: { x: lH.x + lH.w * 0.88,          y: H_BAR_Y,             r: GR   },
     };
@@ -808,18 +808,17 @@ function initWorkshopTitle() {
 
     /* main chain path: O2 exit → 12→11→10→S→9→8→O1→7→6→5→4→3→2→1 */
     function buildMainChain() {
-      const pts = [], cn = GR+2, c2 = GR2+3;
+      const pts = [], cn = GR+2, c2 = O_R+3;
 
       /* right screen edge → P bowl → O2 (integrates the old separate chain) */
       pts.push({x: W, y: P_Y});
       pts.push({x: P_CX + P_R + 2, y: P_Y});
       /* arc around P bowl: right (0) → bottom → left (π) */
       pts.push(...arcPts(P_CX, P_Y, P_R+2, 0, Math.PI, 8));
-      /* diagonal P left → O2 lower-right */
-      pts.push({x: lO2.cx + O_R*0.62, y: O_Y + O_R*0.72});
-      /* arc around O2 lower portion: lower-right → left */
-      pts.push(...arcPts(lO2.cx, O_Y, O_R+2, Math.PI*0.4, Math.PI, 8));
-      pts.push({x: lO2.cx - O_R, y: O_Y});
+      /* diagonal P left → O2 right side (for arc OVER top) */
+      pts.push({x: lO2.cx + O_R + 2, y: O_Y});
+      /* arc OVER O2: right (0) → top → left (-π) CCW */
+      pts.push(...arcPts(lO2.cx, O_Y, O_R+2, 0, -Math.PI, 8));
 
       /* → gear 12 (right end H crossbar) — arc CCW over top */
       pts.push({x: gs[12].x+cn, y: gs[12].y});
@@ -829,9 +828,9 @@ function initWorkshopTitle() {
       pts.push({x: gs[11].x+cn, y: gs[11].y});
       pts.push(...arcPts(gs[11].x, gs[11].y, cn, 0, Math.PI, 8));
 
-      /* → gear 10 (top H left vertical) — chain arrives from below; arc bottom→left */
+      /* → gear 10 (top H left vertical) — arrives from below; arc CCW OVER top → exit left */
       pts.push({x: gs[10].x, y: gs[10].y+cn});
-      pts.push(...arcPts(gs[10].x, gs[10].y, cn, Math.PI*0.5, Math.PI, 6));
+      pts.push(...arcPts(gs[10].x, gs[10].y, cn, Math.PI*0.5, -Math.PI, 10));
 
       /* → SG1 (top of S) — arc CCW over top = upper S curve */
       pts.push({x: lS.cx+CR_s, y: SG1Y});
@@ -840,12 +839,13 @@ function initWorkshopTitle() {
       /* crossing SG1→SG2 */
       pts.push({x: lS.cx+CR_s, y: SG2Y});
 
-      /* SG2 lower arc CW = lower S curve */
-      pts.push(...arcPts(lS.cx, SG2Y, CR_s, 0, Math.PI, 14));
+      /* SG2 lower arc CW, exit at 6 o'clock (bottom) */
+      pts.push(...arcPts(lS.cx, SG2Y, CR_s, 0, Math.PI*0.5, 7));
+      pts.push({x: lS.cx, y: SG2Y + CR_s});
 
-      /* → gear 9 (bottom K lower-right diagonal) */
+      /* → gear 9 (bottom K lower-right diagonal) — chain UNDER */
       pts.push({x: gs[9].x+cn, y: gs[9].y});
-      pts.push(...arcPts(gs[9].x, gs[9].y, cn, 0, -Math.PI, 8));
+      pts.push(...arcPts(gs[9].x, gs[9].y, cn, 0, Math.PI, 8));
 
       /* → gear 8 (K centre) — up diagonal; arc CCW over top */
       pts.push({x: gs[8].x+cn, y: gs[8].y});
@@ -857,25 +857,26 @@ function initWorkshopTitle() {
       /* O1: 3 o'clock → 12 o'clock CCW (upper-right quarter) */
       pts.push(...arcPts(lO1.cx, O_Y, CR_o1, 0, -Math.PI*0.5, 12));
 
-      /* → gear 7 (top-right W) */
-      pts.push({x: gs[7].x+cn*0.5, y: gs[7].y-cn*0.5});
-      pts.push(...arcPts(gs[7].x, gs[7].y, cn, -Math.PI*0.25, Math.PI*0.75, 10));
+      /* W section: OVER 7 → UNDER 6 → OVER 5 → UNDER 4 → OVER 3 */
+      /* → gear 7 (top-right W) — OVER top */
+      pts.push({x: gs[7].x+cn, y: gs[7].y});
+      pts.push(...arcPts(gs[7].x, gs[7].y, cn, 0, -Math.PI, 8));
 
-      /* → gear 6 (bottom-right valley W) */
-      pts.push({x: gs[6].x+cn*0.3, y: gs[6].y-cn*0.8});
-      pts.push(...arcPts(gs[6].x, gs[6].y, cn, 0, -Math.PI*0.5, 8));
+      /* → gear 6 (bottom-right valley W) — UNDER bottom */
+      pts.push({x: gs[6].x+cn, y: gs[6].y});
+      pts.push(...arcPts(gs[6].x, gs[6].y, cn, 0, Math.PI, 8));
 
-      /* → gear 5 (middle peak W) */
-      pts.push({x: gs[5].x+cn*0.3, y: gs[5].y+cn*0.8});
-      pts.push(...arcPts(gs[5].x, gs[5].y, cn, Math.PI*0.5, Math.PI, 8));
+      /* → gear 5 (middle peak W) — OVER top */
+      pts.push({x: gs[5].x+cn, y: gs[5].y});
+      pts.push(...arcPts(gs[5].x, gs[5].y, cn, 0, -Math.PI, 8));
 
-      /* → gear 4 (bottom-left valley W) */
-      pts.push({x: gs[4].x+cn*0.3, y: gs[4].y-cn*0.8});
-      pts.push(...arcPts(gs[4].x, gs[4].y, cn, 0, -Math.PI*0.5, 8));
+      /* → gear 4 (bottom-left valley W) — UNDER bottom */
+      pts.push({x: gs[4].x+cn, y: gs[4].y});
+      pts.push(...arcPts(gs[4].x, gs[4].y, cn, 0, Math.PI, 8));
 
-      /* → gear 3 (top-left W) */
-      pts.push({x: gs[3].x+cn*0.5, y: gs[3].y+cn*0.5});
-      pts.push(...arcPts(gs[3].x, gs[3].y, cn, Math.PI*0.25, Math.PI, 8));
+      /* → gear 3 (top-left W) — OVER top */
+      pts.push({x: gs[3].x+cn, y: gs[3].y});
+      pts.push(...arcPts(gs[3].x, gs[3].y, cn, 0, -Math.PI, 8));
 
       /* → gear 2 → gear 1 */
       pts.push({x: gs[2].x+c2, y: gs[2].y});
