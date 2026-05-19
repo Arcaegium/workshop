@@ -47,6 +47,7 @@ async function boot() {
   initBrickWall();
   initGlitchLayer();
   initForgeParticles();
+  initParallax();
   initWorkshopTitle();
   /* initCardScrambles() and initCardFlicker() re-enable with renderPortals() */
   initStatusBar();
@@ -668,6 +669,44 @@ function initForgeParticles() {
     requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);
+}
+
+function initParallax() {
+  const bg    = document.getElementById('bg-video');
+  const brick = document.getElementById('brickCanvas');
+  if (!bg && !brick) return;
+
+  let ticking = false;
+
+  function apply() {
+    ticking = false;
+    const sy    = window.scrollY || 0;
+    const H     = window.innerHeight;
+    /* totalScroll reflects portal count — more portals = longer scroll = same visual travel */
+    const total = Math.max(1, document.body.scrollHeight - H);
+
+    if (bg) {
+      /* video pans DOWN: starts at top of frame, reveals lower portion as user scrolls.
+         Travel = 50% of viewport height, spread proportionally over full scroll range. */
+      const bgRate = (H * 0.50) / total;
+      bg.style.transform = `translateY(${(sy * bgRate).toFixed(1)}px)`;
+    }
+
+    if (brick) {
+      /* brick moves UP slower than content — creates depth (brick is "nearer" than bg,
+         "further" than portals). Travel = 30% of viewport height over full scroll. */
+      const brickRate = (H * 0.30) / total;
+      brick.style.transform = `translateY(${(-sy * brickRate).toFixed(1)}px)`;
+    }
+  }
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) { requestAnimationFrame(apply); ticking = true; }
+  }, {passive: true});
+
+  /* Run once after portals paint so scrollHeight is accurate */
+  window.addEventListener('load', apply);
+  setTimeout(apply, 400);
 }
 
 function initWorkshopTitle() {
