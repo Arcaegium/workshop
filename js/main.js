@@ -684,11 +684,16 @@ function initWorkshopTitle() {
   function run() {
     if (raf) { cancelAnimationFrame(raf); raf = null; }
 
-    const W  = (cv.parentElement || document.body).clientWidth || 800;
-    const FS = Math.min(Math.round(W * 0.086), 104);
-    const CH = Math.round(FS * 2.05);
-    cv.width = W; cv.height = CH;
-    cv.style.cssText = 'display:block;width:100%;';
+    const parentEl = cv.parentElement || document.body;
+    const parentW  = parentEl.clientWidth || window.innerWidth;
+    const W        = window.innerWidth;
+    const FS       = Math.min(Math.round(parentW * 0.086), 104);
+    const CH       = Math.round(FS * 2.05);
+    cv.width  = W;
+    cv.height = CH;
+    /* Pull canvas to viewport left edge using actual rendered position */
+    const cvLeft = parentEl.getBoundingClientRect().left;
+    cv.style.cssText = `display:block;width:${W}px;height:${CH}px;margin-left:${-cvLeft}px;`;
     const ctx = cv.getContext('2d');
 
     const BR = '#c8860a', BR_L = '#e0a830', BR_D = '#7a4e06';
@@ -723,8 +728,8 @@ function initWorkshopTitle() {
       10: { x: H_LS_X,                       y: CAP_Y + SH * 0.15,   r: GR   },
       11: { x: lH.x + lH.w * 0.24,          y: H_BAR_Y + SH * 0.07, r: GR   },
       12: { x: lH.x + lH.w * 0.76,          y: H_BAR_Y + SH * 0.07, r: GR   },
-      13: { x: lP.x + lP.w + O_R * 2.5,    y: P_Y,                 r: O_R  },  /* mirror of g2 */
-      14: { x: lP.x + lP.w + O_R * 4.5,    y: P_Y,                 r: S_R  },  /* mirror of g1 */
+      13: { x: lP.x + lP.w + O_R * 2.5,    y: O_Y,                 r: O_R  },  /* mirror of g2 */
+      14: { x: lP.x + lP.w + O_R * 4.5,    y: O_Y,                 r: S_R  },  /* mirror of g1 */
     };
 
     const CR_o1 = O_R + 4, CR_s = S_R + 3, LINK_L = FS * 0.052;
@@ -894,7 +899,7 @@ function initWorkshopTitle() {
       /* right screen edge → g14 (mirror of g1) → g13 (mirror of g2) → P */
       const cn14 = gs[14].r + 2;
       const c13  = gs[13].r + 3;
-      pts.push({x: W + 60, y: P_Y});
+      pts.push({x: W + 60, y: O_Y});
       /* g14: enter from right, arc OVER top (0→-π CCW) */
       pts.push({x: gs[14].x + cn14, y: gs[14].y});
       pts.push(...arcPts(gs[14].x, gs[14].y, cn14, 0, -Math.PI, 8));
