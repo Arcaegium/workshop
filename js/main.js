@@ -808,6 +808,8 @@ function initWorkshopTitle() {
       const pts = [], cn = GR+2, c2 = O_R+3;
 
       /* right screen edge → P bowl → O2 (integrates the old separate chain) */
+      /* start past right edge — canvas clips, chain always reaches viewport boundary */
+      pts.push({x: W + 60, y: P_Y});
       pts.push({x: W, y: P_Y});
       pts.push({x: P_CX + P_R + 2, y: P_Y});
       /* arc P: 3 o'clock → 10 o'clock CCW (over top, continuing to upper-left) */
@@ -882,6 +884,7 @@ function initWorkshopTitle() {
       pts.push({x: gs[1].x + cn1, y: gs[1].y});
       pts.push(...arcPts(gs[1].x, gs[1].y, cn1, 0, -Math.PI, 8));
       pts.push({x: 0, y: gs[1].y});
+      pts.push({x: -60, y: gs[1].y});
 
       return pts;
     }
@@ -894,7 +897,7 @@ function initWorkshopTitle() {
       const o1A = -t*ω, o2A = -t*ω, pA = -t*ω*(O_R/P_R);
       const sA1 = -t*ω*(O_R/S_R), sA2 =  t*ω*(O_R/S_R);
       /* chain phase: 0.4× factor syncs link-rate to O1's 8-tooth pitch */
-      const mPh = (t * O_R * ω * 0.268) % LINK_L;
+      const mPh = (t * O_R * ω * 0.214) % LINK_L;
 
       /* ── 1. W K H text behind chain ── */
       ctx.font=`900 ${FS}px Orbitron, monospace`;
