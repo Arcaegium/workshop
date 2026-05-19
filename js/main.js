@@ -684,12 +684,11 @@ function initWorkshopTitle() {
   function run() {
     if (raf) { cancelAnimationFrame(raf); raf = null; }
 
-    const parentW = (cv.parentElement || document.body).clientWidth || window.innerWidth;
-    const W  = window.innerWidth;
-    const FS = Math.min(Math.round(parentW * 0.086), 104);
+    const W  = (cv.parentElement || document.body).clientWidth || 800;
+    const FS = Math.min(Math.round(W * 0.086), 104);
     const CH = Math.round(FS * 2.05);
     cv.width = W; cv.height = CH;
-    cv.style.cssText = `display:block;width:${W}px;margin-left:${-(W-parentW)/2}px;`;
+    cv.style.cssText = 'display:block;width:100%;';
     const ctx = cv.getContext('2d');
 
     const BR = '#c8860a', BR_L = '#e0a830', BR_D = '#7a4e06';
