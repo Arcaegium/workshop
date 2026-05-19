@@ -829,9 +829,9 @@ function initWorkshopTitle() {
       pts.push({x: gs[10].x, y: gs[10].y+cn});
       pts.push(...arcPts(gs[10].x, gs[10].y, cn, Math.PI*0.5, -Math.PI, 10));
 
-      /* → SG1 (top of S) — arc CCW over top = upper S curve */
-      pts.push({x: lS.cx+CR_s, y: SG1Y});
-      pts.push(...arcPts(lS.cx, SG1Y, CR_s, 0, -Math.PI, 14));
+      /* → SG1 (top of S) — arrive at 2 o'clock, arc CCW over top to 9 o'clock */
+      pts.push({x: lS.cx + CR_s*Math.cos(-Math.PI/6), y: SG1Y + CR_s*Math.sin(-Math.PI/6)});
+      pts.push(...arcPts(lS.cx, SG1Y, CR_s, -Math.PI/6, -Math.PI, 14));
 
       /* crossing SG1→SG2 */
       pts.push({x: lS.cx+CR_s, y: SG2Y});
@@ -894,7 +894,7 @@ function initWorkshopTitle() {
       const o1A = -t*ω, o2A = -t*ω, pA = -t*ω*(O_R/P_R);
       const sA1 = -t*ω*(O_R/S_R), sA2 =  t*ω*(O_R/S_R);
       /* chain phase: 0.4× factor syncs link-rate to O1's 8-tooth pitch */
-      const mPh = (t * O_R * ω * 0.4) % LINK_L;
+      const mPh = (t * O_R * ω * 0.268) % LINK_L;
 
       /* ── 1. W K H text behind chain ── */
       ctx.font=`900 ${FS}px Orbitron, monospace`;
