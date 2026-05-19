@@ -626,10 +626,12 @@ function initWorkshopTitle() {
   function run() {
     if (raf) { cancelAnimationFrame(raf); raf = null; }
 
-    const W  = (cv.parentElement || document.body).clientWidth || 800;
-    const FS = Math.min(Math.round(W * 0.086), 104);
+    const parentW = (cv.parentElement || document.body).clientWidth || window.innerWidth;
+    const W  = window.innerWidth;
+    const FS = Math.min(Math.round(parentW * 0.086), 104);
     const CH = Math.round(FS * 2.05);
     cv.width = W; cv.height = CH;
+    cv.style.cssText = `display:block;width:${W}px;margin-left:${-(W-parentW)/2}px;`;
     const ctx = cv.getContext('2d');
 
     const BR = '#c8860a', BR_L = '#e0a830', BR_D = '#7a4e06';
@@ -700,21 +702,44 @@ function initWorkshopTitle() {
 
     function drawChain(pts, phase, linkL, bright) {
       const total = pLen(pts); if (total < 1) return;
-      const PITCH = linkL * 2.5;
-      const offset = ((phase * PITCH) % PITCH + PITCH) % PITCH;
-      for (let d = offset; d < total - linkL * 0.4; d += PITCH) {
-        const p = ptAt(pts, d);
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
-        const hw = linkL*0.52, hh = linkL*0.28;
-        ctx.fillStyle = bright ? BR_D : IR;
-        ctx.fillRect(-hw-1,-hh-1,hw*2+2,hh*2+2);
-        ctx.fillStyle = bright ? BR : IR_L;
-        ctx.fillRect(-hw,-hh,hw*2,hh*2);
-        const pinR = hh*0.32;
-        ctx.fillStyle = bright ? BR_D : IR;
-        ctx.beginPath(); ctx.arc(-hw+hh,0,pinR,0,Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(hw-hh,0,pinR,0,Math.PI*2); ctx.fill();
-        ctx.restore();
+      const ovalL = linkL;           /* oval length along path */
+      const ovalH = linkL * 0.44;   /* oval height across path */
+      const dashL = linkL;           /* dash same length as oval */
+      const dashH = linkL * 0.12;   /* dash very thin */
+      const gap   = linkL * 0.16;   /* gap between oval and dash */
+      const UNIT  = ovalL + gap + dashL + gap;  /* one oval+dash pitch */
+
+      const offset = ((phase * UNIT) % UNIT + UNIT) % UNIT;
+      for (let d = offset - UNIT; d < total + UNIT; d += UNIT) {
+        /* ── oval link ── */
+        const dc = d + ovalL * 0.5;
+        if (dc >= 0 && dc < total) {
+          const p = ptAt(pts, dc);
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
+          /* outer ring */
+          ctx.fillStyle = bright ? BR_D : IR;
+          ctx.beginPath(); ctx.ellipse(0, 0, ovalL*0.5+1, ovalH*0.5+1, 0, 0, Math.PI*2); ctx.fill();
+          /* inner fill */
+          ctx.fillStyle = bright ? BR : IR_L;
+          ctx.beginPath(); ctx.ellipse(0, 0, ovalL*0.5, ovalH*0.5, 0, 0, Math.PI*2); ctx.fill();
+          /* pin holes */
+          const pr = ovalH * 0.21;
+          ctx.fillStyle = bright ? BR_D : IR;
+          ctx.beginPath(); ctx.arc(-ovalL*0.27, 0, pr, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc( ovalL*0.27, 0, pr, 0, Math.PI*2); ctx.fill();
+          ctx.restore();
+        }
+        /* ── dash link ── */
+        const dd = d + ovalL + gap + dashL * 0.5;
+        if (dd >= 0 && dd < total) {
+          const p = ptAt(pts, dd);
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
+          ctx.fillStyle = bright ? BR_D : IR;
+          ctx.fillRect(-dashL*0.5-0.5, -dashH*0.5-0.5, dashL+1, dashH+1);
+          ctx.fillStyle = bright ? BR : IR_L;
+          ctx.fillRect(-dashL*0.5, -dashH*0.5, dashL, dashH);
+          ctx.restore();
+        }
       }
     }
 
@@ -891,18 +916,35 @@ function initWorkshopTitle() {
 
     const mainChainPts = buildMainChain();
 
-    /* ── PISTON STATE ── */
+    /* ── FORGE PARTICLES ── */
+    function spawnForge() {
+      const onLeft = Math.random() < 0.5;
+      const lx = lW.x - FS * 0.5;
+      const rx = lP.x + lP.w + FS * 0.5;
+      const x = onLeft
+        ? Math.random() * Math.max(1, lx)
+        : rx + Math.random() * Math.max(1, W - rx);
+      return {
+        x, y: CH * (0.45 + Math.random() * 0.55),
+        vx: (Math.random() - 0.5) * 0.7,
+        vy: -(0.6 + Math.random() * 1.8),
+        life: Math.random() * 2.5,
+        maxLife: 1.8 + Math.random() * 2.2,
+        size: 0.7 + Math.random() * 2.0,
+      };
+    }
+    const forgeParticles = Array.from({length: 32}, spawnForge);
     let pistonStep     = 0;
     let pistonLastTooth = -1;
     let isHammering    = false;
     let hammerStartT   = 0;
-    const N_PISTON_STEPS = 5;
-    const HAMMER_DUR     = 0.13;   /* seconds for hammer to fall */
+    const N_PISTON_STEPS = 4;
+    const HAMMER_DUR     = 0.13;
 
     function frame(ts) {
       ctx.clearRect(0, 0, W, CH);
       const t = ts*0.001, ω = 0.51;
-      const o1A = -t*ω*1.15, o2A = -t*ω*1.15, pA = -t*ω*1.15*(O_R/P_R);
+      const o1A = -t*ω*1.38, o2A = -t*ω*1.38, pA = -t*ω*1.38*(O_R/P_R);
       const sA1 = -t*ω*(O_R/S_R), sA2 =  t*ω*(O_R/S_R);
       /* chain phase: continuous (no % LINK_L) — removes cyclical catch glitch */
       const mPh = t * O_R * ω * 0.214;
@@ -930,6 +972,23 @@ function initWorkshopTitle() {
         ? Math.max(0, 1 - Math.pow((t - hammerStartT) / HAMMER_DUR, 1.8))
         : pistonStep / N_PISTON_STEPS;
 
+      /* ── 0. forge particles ── */
+      for (const p of forgeParticles) {
+        p.x  += p.vx; p.y += p.vy;
+        p.vx += (Math.random() - 0.5) * 0.06;
+        p.life += 0.016;
+        if (p.y < -10 || p.life > p.maxLife) Object.assign(p, spawnForge(), {life: 0});
+        const f  = p.life / p.maxLife;
+        const al = f < 0.15 ? f/0.15 : f < 0.75 ? 1 : (1-f)/0.25;
+        const r  = p.size * (1 + f * 0.4);
+        const g  = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
+        g.addColorStop(0,   `rgba(255,210,90,${(al*0.92).toFixed(2)})`);
+        g.addColorStop(0.4, `rgba(255,140,20,${(al*0.45).toFixed(2)})`);
+        g.addColorStop(1,   'rgba(180,80,5,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(p.x, p.y, r*3, 0, Math.PI*2); ctx.fill();
+      }
+
       /* ── 1. W K H text behind chain ── */
       ctx.font=`900 ${FS}px Orbitron, monospace`;
       ctx.textBaseline='alphabetic'; ctx.textAlign='left'; ctx.fillStyle=TX;
@@ -946,7 +1005,7 @@ function initWorkshopTitle() {
       const SIGNS = {1:-1,2:-1,3:-1,4:1,5:-1,6:1,7:-1,8:-1,9:1,10:-1,11:1,12:-1};
       [1,2,3,4,5,6,7,8,9,10,11,12].forEach(n => {
         const g   = gs[n];
-        const gω  = (n === 2) ? ω*1.15 : ω;   /* g2 matches O1/O2 speed */
+        const gω  = (n === 2) ? ω*1.38 : ω;   /* g2 matches O1/O2 speed */
         const ang = SIGNS[n] * t * gω * (O_R / g.r);
         gearStd(g.x, g.y, g.r, 8, ang, BR, BR_D);
       });
@@ -984,8 +1043,7 @@ function initWorkshopTitle() {
       /* ── 9b. RATCHET BAR (jack stand style) inside P stem ── */
       {
         const stH      = BASELINE - CAP_Y;
-        const extScale = 1.3;                        /* extends 30% above letter top */
-        const barTopY  = BASELINE - stH * extScale * pistonFrac;
+        const barTopY  = CAP_Y - stH * 0.70 * pistonFrac;  /* starts flush with P stem top */
         const barBot   = BASELINE + 4;
 
         const barW  = Math.max(3, Math.round(stW * 0.28));
@@ -999,7 +1057,7 @@ function initWorkshopTitle() {
 
         /* ratchet teeth — one per step, right side of bar */
         const toothW  = Math.max(2, Math.round(stW * 0.22));
-        const tSpacing = (stH * extScale) / N_PISTON_STEPS;
+        const tSpacing = (stH * 0.70) / N_PISTON_STEPS;
         const toothH  = Math.max(2, Math.round(tSpacing * 0.52));
         for (let i = 0; i < N_PISTON_STEPS; i++) {
           const ty = barTopY + i * tSpacing + (tSpacing - toothH) * 0.5;
