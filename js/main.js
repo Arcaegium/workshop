@@ -46,6 +46,7 @@ async function boot() {
 
   initBrickWall();
   initGlitchLayer();
+  initForgeParticles();
   initWorkshopTitle();
   /* initCardScrambles() and initCardFlicker() re-enable with renderPortals() */
   initStatusBar();
@@ -612,6 +613,63 @@ function initGlitchLayer() {
    node gears plus S gears and O1.
    W K H rendered behind chain. R rendered in front.
    ============================================================ */
+function initForgeParticles() {
+  const cv = document.createElement('canvas');
+  cv.id = 'forgeCanvas';
+  cv.style.cssText = 'position:fixed;top:0;left:0;pointer-events:none;z-index:3;';
+  document.body.appendChild(cv);
+
+  let W = window.innerWidth, H = window.innerHeight;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  window.addEventListener('resize', () => {
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W; cv.height = H;
+  });
+
+  function spawn() {
+    const sideW = W * 0.13;
+    const onLeft = Math.random() < 0.5;
+    return {
+      x: onLeft ? Math.random() * sideW : W - Math.random() * sideW,
+      y: H * (0.15 + Math.random() * 0.85),
+      vx: (Math.random() - 0.5) * 0.9,
+      vy: -(0.8 + Math.random() * 2.2),
+      life: Math.random() * 3,
+      maxLife: 2 + Math.random() * 3,
+      size: 0.8 + Math.random() * 2.6,
+    };
+  }
+
+  const particles = Array.from({length: 48}, spawn);
+  let last = 0;
+
+  function draw(ts) {
+    const dt = Math.min(0.05, (ts - last) * 0.001);
+    last = ts;
+    ctx.clearRect(0, 0, W, H);
+    for (const p of particles) {
+      p.x  += p.vx * 60 * dt;
+      p.y  += p.vy * 60 * dt;
+      p.vx += (Math.random() - 0.5) * 0.07;
+      p.life += dt;
+      if (p.y < -20 || p.life > p.maxLife) Object.assign(p, spawn(), {life: 0});
+      const f  = p.life / p.maxLife;
+      const al = f < 0.15 ? f/0.15 : f < 0.75 ? 1 : (1-f)/0.25;
+      const r  = p.size * (1 + f * 0.5);
+      const g  = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
+      g.addColorStop(0,   `rgba(255,210,90,${(al*0.88).toFixed(2)})`);
+      g.addColorStop(0.4, `rgba(255,140,20,${(al*0.44).toFixed(2)})`);
+      g.addColorStop(1,   'rgba(180,80,5,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * 3, 0, Math.PI*2); ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
 function initWorkshopTitle() {
   const h1 = document.getElementById('mainTitle');
   if (!h1) return;
@@ -664,8 +722,8 @@ function initWorkshopTitle() {
       8:  { x: lK.x + lK.w * 0.40,          y: CAP_Y + SH * 0.62,   r: GR   },
       9:  { x: lK.x + lK.w * 0.88,          y: BASELINE - GR,        r: GR   },
       10: { x: H_LS_X,                       y: CAP_Y + SH * 0.15,   r: GR   },
-      11: { x: H_LS_X,                       y: H_BAR_Y,             r: GR   },
-      12: { x: lH.x + lH.w * 0.88,          y: H_BAR_Y,             r: GR   },
+      11: { x: lH.x + lH.w * 0.24,          y: H_BAR_Y + SH * 0.07, r: GR   },
+      12: { x: lH.x + lH.w * 0.76,          y: H_BAR_Y + SH * 0.07, r: GR   },
     };
 
     const CR_o1 = O_R + 4, CR_s = S_R + 3, LINK_L = FS * 0.052;
@@ -916,25 +974,6 @@ function initWorkshopTitle() {
 
     const mainChainPts = buildMainChain();
 
-    /* ── FORGE PARTICLES ── */
-    function spawnForge() {
-      const onLeft = Math.random() < 0.5;
-      const lx = lW.x - FS * 0.5;
-      const rx = lP.x + lP.w + FS * 0.5;
-      const x = onLeft
-        ? Math.random() * Math.max(1, lx)
-        : rx + Math.random() * Math.max(1, W - rx);
-      return {
-        x, y: CH * (0.45 + Math.random() * 0.55),
-        vx: (Math.random() - 0.5) * 0.7,
-        vy: -(0.6 + Math.random() * 1.8),
-        life: Math.random() * 2.5,
-        maxLife: 1.8 + Math.random() * 2.2,
-        size: 0.7 + Math.random() * 2.0,
-      };
-    }
-    const forgeParticles = Array.from({length: 32}, spawnForge);
-    let pistonStep     = 0;
     let pistonLastTooth = -1;
     let isHammering    = false;
     let hammerStartT   = 0;
@@ -972,24 +1011,6 @@ function initWorkshopTitle() {
         ? Math.max(0, 1 - Math.pow((t - hammerStartT) / HAMMER_DUR, 1.8))
         : pistonStep / N_PISTON_STEPS;
 
-      /* ── 0. forge particles ── */
-      for (const p of forgeParticles) {
-        p.x  += p.vx; p.y += p.vy;
-        p.vx += (Math.random() - 0.5) * 0.06;
-        p.life += 0.016;
-        if (p.y < -10 || p.life > p.maxLife) Object.assign(p, spawnForge(), {life: 0});
-        const f  = p.life / p.maxLife;
-        const al = f < 0.15 ? f/0.15 : f < 0.75 ? 1 : (1-f)/0.25;
-        const r  = p.size * (1 + f * 0.4);
-        const g  = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
-        g.addColorStop(0,   `rgba(255,210,90,${(al*0.92).toFixed(2)})`);
-        g.addColorStop(0.4, `rgba(255,140,20,${(al*0.45).toFixed(2)})`);
-        g.addColorStop(1,   'rgba(180,80,5,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(p.x, p.y, r*3, 0, Math.PI*2); ctx.fill();
-      }
-
-      /* ── 1. W K H text behind chain ── */
       ctx.font=`900 ${FS}px Orbitron, monospace`;
       ctx.textBaseline='alphabetic'; ctx.textAlign='left'; ctx.fillStyle=TX;
       ctx.shadowColor='rgba(200,136,10,0.38)'; ctx.shadowBlur=FS*0.10;
@@ -1014,8 +1035,8 @@ function initWorkshopTitle() {
       gearStd(lS.cx, SG1Y, S_R, 8, sA1, BR, BR_D);
       gearStd(lS.cx, SG2Y, S_R, 8, sA2, BR, BR_D);
 
-      /* ── 6. O1 gearFlat ── */
-      gearFlat(lO1.cx, O_Y, O_R, 8, o1A, BR, BR_D);
+      /* ── 6. O1 gearRing (same style as O2) ── */
+      gearRing(lO1.cx, O_Y, O_R, 12, o1A, BR, BR_D);
 
       /* ── 8. O2 gearRing ── */
       gearRing(lO2.cx, O_Y, O_R, 12, o2A, BR, BR_D);
@@ -1057,10 +1078,11 @@ function initWorkshopTitle() {
 
         /* ratchet teeth — one per step, right side of bar */
         const toothW  = Math.max(2, Math.round(stW * 0.22));
-        const tSpacing = (stH * 0.70) / N_PISTON_STEPS;
-        const toothH  = Math.max(2, Math.round(tSpacing * 0.52));
+        const tSpacing  = (stH * 0.70) / N_PISTON_STEPS;
+        const toothH    = Math.max(2, Math.round(tSpacing * 0.55));
+        const pawlOff   = P_Y - CAP_Y;   /* offset from barTop to first tooth = pawl height */
         for (let i = 0; i < N_PISTON_STEPS; i++) {
-          const ty = barTopY + i * tSpacing + (tSpacing - toothH) * 0.5;
+          const ty = barTopY + pawlOff + i * tSpacing - toothH * 0.5;
           if (ty + toothH < 0 || ty > BASELINE + 2) continue;
           ctx.fillStyle = BR_D;
           ctx.fillRect(barX + barW, ty, toothW, toothH);
