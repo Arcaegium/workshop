@@ -655,7 +655,7 @@ function initWorkshopTitle() {
     const H_BAR_Y = CAP_Y + SH * 0.50, H_LS_X = lH.x + lH.w * 0.09;
 
     const gs = {
-      1:  { x: lW.x - O_R * 4.5,            y: O_Y,                 r: GR   },
+      1:  { x: lW.x - O_R * 4.5,            y: O_Y,                 r: S_R  },
       2:  { x: lW.x - O_R * 2.5,            y: O_Y,                 r: O_R  },
       3:  { x: lW.x + GR * 1.4,             y: CAP_Y + GR * 1.4,    r: GR   },
       4:  { x: lW.x + lW.w * 0.26,          y: BASELINE - GR * 1.2, r: GR   },
@@ -813,9 +813,9 @@ function initWorkshopTitle() {
       /* right screen edge → P bowl → O2 (integrates the old separate chain) */
       pts.push({x: W, y: P_Y});
       pts.push({x: P_CX + P_R + 2, y: P_Y});
-      /* arc around P bowl: right (0) → bottom → left (π) */
-      pts.push(...arcPts(P_CX, P_Y, P_R+2, 0, Math.PI, 8));
-      /* diagonal P left → O2 right side (for arc OVER top) */
+      /* arc P: 3 o'clock → 12 o'clock CCW (over the top) */
+      pts.push(...arcPts(P_CX, P_Y, P_R+2, 0, -Math.PI*0.5, 6));
+      /* exit P at 12 o'clock → diagonal to O2 right side */
       pts.push({x: lO2.cx + O_R + 2, y: O_Y});
       /* arc OVER O2: right (0) → top → left (-π) CCW */
       pts.push(...arcPts(lO2.cx, O_Y, O_R+2, 0, -Math.PI, 8));
@@ -878,9 +878,9 @@ function initWorkshopTitle() {
       pts.push({x: gs[3].x+cn, y: gs[3].y});
       pts.push(...arcPts(gs[3].x, gs[3].y, cn, 0, -Math.PI, 8));
 
-      /* → gear 2 → gear 1 */
-      pts.push({x: gs[2].x+c2, y: gs[2].y});
-      pts.push(...arcPts(gs[2].x, gs[2].y, c2, 0, -Math.PI, 10));
+      /* → gear 2: approach at 2 o'clock (-π/6), arc CCW over top to 9 o'clock */
+      pts.push({x: gs[2].x + c2*0.866, y: gs[2].y - c2*0.5});
+      pts.push(...arcPts(gs[2].x, gs[2].y, c2, -Math.PI/6, -Math.PI, 10));
       pts.push({x: gs[1].x+cn, y: gs[1].y});
       pts.push(...arcPts(gs[1].x, gs[1].y, cn, 0, -Math.PI, 6));
       /* extend to left screen edge so chain looks like it exits off-screen */
@@ -893,8 +893,7 @@ function initWorkshopTitle() {
 
     function frame(ts) {
       ctx.clearRect(0, 0, W, CH);
-      const t = ts*0.001, ω = 0.34;
-      const gA  =  t*ω*(O_R/GR), g2A = t*ω*(O_R/GR2);
+      const t = ts*0.001, ω = 0.22;
       const o1A = -t*ω, o2A = -t*ω, pA = t*ω*(O_R/P_R);
       const sA1 =  t*ω*(O_R/S_R), sA2 = -t*ω*(O_R/S_R);
       const mPh = (t*O_R*ω) % LINK_L;
@@ -911,9 +910,10 @@ function initWorkshopTitle() {
       /* ── 2. main chain ── */
       drawChain(mainChainPts, mPh, LINK_L, true);
 
-      /* ── 4. node gears 1-12 ── */
+      /* ── 4. node gears 1-12: each spins at ω*(O_R/g.r) so tangential speed = chain speed ── */
       [1,2,3,4,5,6,7,8,9,10,11,12].forEach(n => {
-        const g = gs[n], ang = n%2===1 ? gA : -gA;
+        const g = gs[n];
+        const ang = (n%2===1 ? 1 : -1) * t * ω * (O_R / g.r);
         gearStd(g.x, g.y, g.r, 8, ang, BR, BR_D);
       });
 
