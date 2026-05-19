@@ -902,10 +902,10 @@ function initWorkshopTitle() {
     function frame(ts) {
       ctx.clearRect(0, 0, W, CH);
       const t = ts*0.001, ω = 0.51;
-      const o1A = -t*ω, o2A = -t*ω, pA = -t*ω*(O_R/P_R);
+      const o1A = -t*ω*1.15, o2A = -t*ω*1.15, pA = -t*ω*1.15*(O_R/P_R);
       const sA1 = -t*ω*(O_R/S_R), sA2 =  t*ω*(O_R/S_R);
-      /* chain phase: 0.4× factor syncs link-rate to O1's 8-tooth pitch */
-      const mPh = (t * O_R * ω * 0.214) % LINK_L;
+      /* chain phase: continuous (no % LINK_L) — removes cyclical catch glitch */
+      const mPh = t * O_R * ω * 0.214;
 
       /* ── PISTON RATCHET: one click per P tooth ── */
       const toothPeriod = (Math.PI*2) / P_TEETH;
@@ -945,8 +945,9 @@ function initWorkshopTitle() {
       /* ── 4. node gears 1-12: sign lookup encodes correct chain-direction spin ── */
       const SIGNS = {1:-1,2:-1,3:-1,4:1,5:-1,6:1,7:-1,8:-1,9:1,10:-1,11:1,12:-1};
       [1,2,3,4,5,6,7,8,9,10,11,12].forEach(n => {
-        const g = gs[n];
-        const ang = SIGNS[n] * t * ω * (O_R / g.r);
+        const g   = gs[n];
+        const gω  = (n === 2) ? ω*1.15 : ω;   /* g2 matches O1/O2 speed */
+        const ang = SIGNS[n] * t * gω * (O_R / g.r);
         gearStd(g.x, g.y, g.r, 8, ang, BR, BR_D);
       });
 
@@ -980,29 +981,45 @@ function initWorkshopTitle() {
       ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.restore();
 
-      /* ── 9b. PISTON inside P stem ── */
+      /* ── 9b. RATCHET BAR (jack stand style) inside P stem ── */
       {
-        const stH     = BASELINE - CAP_Y;         /* stem height */
-        const ptopY   = BASELINE - 2 * stH * pistonFrac; /* head top Y */
-        const pRodW   = Math.round(stW * 0.30);
-        const pRodX   = lP.x + Math.round((stW - pRodW) * 0.5);
-        const pHeadH  = Math.max(3, Math.round(stW * 0.30));
-        const pHeadW  = Math.round(stW * 0.80);
-        const pHeadX  = lP.x + Math.round((stW - pHeadW) * 0.5);
-        const rodBot  = BASELINE;
+        const stH      = BASELINE - CAP_Y;
+        const extScale = 1.3;                        /* extends 30% above letter top */
+        const barTopY  = BASELINE - stH * extScale * pistonFrac;
+        const barBot   = BASELINE + 4;
 
-        /* rod body (dark iron, inside stem) */
-        if (rodBot > ptopY + pHeadH) {
-          ctx.fillStyle = IR;
-          ctx.fillRect(pRodX, ptopY + pHeadH, pRodW, rodBot - ptopY - pHeadH);
+        const barW  = Math.max(3, Math.round(stW * 0.28));
+        const barX  = lP.x + Math.round((stW - barW) * 0.5);
+
+        /* bar body — dark iron rod */
+        ctx.fillStyle = IR;
+        ctx.fillRect(barX, barTopY, barW, barBot - barTopY);
+        ctx.fillStyle = IR_L;
+        ctx.fillRect(barX, barTopY, 1, barBot - barTopY);   /* left highlight */
+
+        /* ratchet teeth — one per step, right side of bar */
+        const toothW  = Math.max(2, Math.round(stW * 0.22));
+        const tSpacing = (stH * extScale) / N_PISTON_STEPS;
+        const toothH  = Math.max(2, Math.round(tSpacing * 0.52));
+        for (let i = 0; i < N_PISTON_STEPS; i++) {
+          const ty = barTopY + i * tSpacing + (tSpacing - toothH) * 0.5;
+          if (ty + toothH < 0 || ty > BASELINE + 2) continue;
+          ctx.fillStyle = BR_D;
+          ctx.fillRect(barX + barW, ty, toothW, toothH);
+          ctx.fillStyle = BR;
+          ctx.fillRect(barX + barW, ty, toothW, Math.max(1, Math.round(toothH * 0.40)));
         }
-        /* piston head — three-layer brass for depth */
+
+        /* saddle cap at top */
+        const sadW = Math.round(stW * 0.92);
+        const sadH = Math.max(3, Math.round(stW * 0.32));
+        const sadX = lP.x + Math.round((stW - sadW) * 0.5);
         ctx.fillStyle = BR_D;
-        ctx.fillRect(pHeadX, ptopY, pHeadW, pHeadH);
+        ctx.fillRect(sadX, barTopY - sadH, sadW, sadH);
         ctx.fillStyle = BR;
-        ctx.fillRect(pHeadX + 1, ptopY + 1, pHeadW - 2, Math.ceil(pHeadH * 0.45));
+        ctx.fillRect(sadX + 1, barTopY - sadH + 1, sadW - 2, Math.round(sadH * 0.45));
         ctx.fillStyle = BR_L;
-        ctx.fillRect(pHeadX + 2, ptopY + 1, pHeadW - 4, Math.ceil(pHeadH * 0.18));
+        ctx.fillRect(sadX + 2, barTopY - sadH + 1, sadW - 4, Math.round(sadH * 0.20));
       }
       ctx.font=`900 ${FS}px Orbitron, monospace`;
       ctx.textBaseline='alphabetic'; ctx.textAlign='left'; ctx.fillStyle=TX;
