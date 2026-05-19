@@ -903,11 +903,10 @@ function initWorkshopTitle() {
       /* g14: approach from right (3 o'clock), arc OVER top CCW to 9 o'clock — mirrors g1 */
       pts.push({x: gs[14].x + cn14, y: gs[14].y});
       pts.push(...arcPts(gs[14].x, gs[14].y, cn14, 0, -Math.PI, 8));
-      /* g13: approach at 10 o'clock (upper-left, mirror of g2's 2 o'clock upper-right) */
-      pts.push({x: gs[13].x + c13*Math.cos(-5*Math.PI/6), y: gs[13].y + c13*Math.sin(-5*Math.PI/6)});
-      /* g13 arc CW from 10 o'clock to 3 o'clock (over top, mirror of g2's CCW 2→9) */
-      pts.push(...arcPts(gs[13].x, gs[13].y, c13, -5*Math.PI/6, 0, 10));
-      /* g13 3 o'clock exit → P at 3 o'clock (diagonal up-left, mirrors g2's 9→g3) */
+      /* g13: approach at 3 o'clock (from g14), arc CCW over top to 11 o'clock */
+      pts.push({x: gs[13].x + c13, y: gs[13].y});
+      pts.push(...arcPts(gs[13].x, gs[13].y, c13, 0, -2*Math.PI/3, 10));
+      /* g13 11 o'clock exit → P at 3 o'clock (diagonal down-left) */
       pts.push({x: P_CX + P_R + 2, y: P_Y});
       /* arc P: 3 o'clock → 10 o'clock CCW (over top, continuing to upper-left) */
       pts.push(...arcPts(P_CX, P_Y, P_R+2, 0, -5*Math.PI/6, 12));
