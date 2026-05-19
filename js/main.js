@@ -810,10 +810,9 @@ function initWorkshopTitle() {
       /* right screen edge → P bowl → O2 (integrates the old separate chain) */
       pts.push({x: W, y: P_Y});
       pts.push({x: P_CX + P_R + 2, y: P_Y});
-      /* arc P: 3 o'clock → 12 o'clock CCW (over the top) */
-      pts.push(...arcPts(P_CX, P_Y, P_R+2, 0, -Math.PI*0.5, 6));
-      /* exit P at 12 o'clock → clear P body → arrive O2 at 2 o'clock */
-      pts.push({x: P_CX - P_R - 4, y: P_Y - P_R - 2});
+      /* arc P: 3 o'clock → 10 o'clock CCW (over top, continuing to upper-left) */
+      pts.push(...arcPts(P_CX, P_Y, P_R+2, 0, -5*Math.PI/6, 12));
+      /* straight from P's 10 o'clock to O2's 2 o'clock */
       pts.push({x: lO2.cx + (O_R+2)*Math.cos(-Math.PI/6), y: O_Y + (O_R+2)*Math.sin(-Math.PI/6)});
       /* arc OVER O2: 2 o'clock → top → 9 o'clock CCW */
       pts.push(...arcPts(lO2.cx, O_Y, O_R+2, -Math.PI/6, -Math.PI, 10));
@@ -891,10 +890,11 @@ function initWorkshopTitle() {
 
     function frame(ts) {
       ctx.clearRect(0, 0, W, CH);
-      const t = ts*0.001, ω = 0.22;
+      const t = ts*0.001, ω = 0.34;
       const o1A = -t*ω, o2A = -t*ω, pA = -t*ω*(O_R/P_R);
       const sA1 = -t*ω*(O_R/S_R), sA2 =  t*ω*(O_R/S_R);
-      const mPh = (t * O_R * ω * 0.75) % LINK_L;
+      /* chain phase: 0.4× factor syncs link-rate to O1's 8-tooth pitch */
+      const mPh = (t * O_R * ω * 0.4) % LINK_L;
 
       /* ── 1. W K H text behind chain ── */
       ctx.font=`900 ${FS}px Orbitron, monospace`;
@@ -909,7 +909,7 @@ function initWorkshopTitle() {
       drawChain(mainChainPts, mPh, LINK_L, true);
 
       /* ── 4. node gears 1-12: sign lookup encodes correct chain-direction spin ── */
-      const SIGNS = {1:-1,2:-1,3:-1,4:1,5:-1,6:1,7:-1,8:-1,9:1,10:-1,11:-1,12:-1};
+      const SIGNS = {1:-1,2:-1,3:-1,4:1,5:-1,6:1,7:-1,8:-1,9:1,10:-1,11:1,12:-1};
       [1,2,3,4,5,6,7,8,9,10,11,12].forEach(n => {
         const g = gs[n];
         const ang = SIGNS[n] * t * ω * (O_R / g.r);
@@ -923,14 +923,19 @@ function initWorkshopTitle() {
       /* ── 6. O1 gearFlat ── */
       gearFlat(lO1.cx, O_Y, O_R, 8, o1A, BR, BR_D);
 
-      /* ── 7. coupling rod O1→gear 6 ── */
+      /* ── 7. coupling rod O1→gear 2 (both pins rotate, counter-phase for pump effect) ── */
       const rodX1 = lO1.cx + Math.cos(o1A)*O_R*0.70;
       const rodY1 = O_Y    + Math.sin(o1A)*O_R*0.70;
+      const g2Ang = -o1A; /* opposite direction → pump action */
+      const rodX2 = gs[2].x + Math.cos(g2Ang)*O_R*0.70;
+      const rodY2 = gs[2].y + Math.sin(g2Ang)*O_R*0.70;
       ctx.strokeStyle=BR_D; ctx.lineWidth=FS*0.028; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(rodX1,rodY1); ctx.lineTo(gs[6].x,gs[6].y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(rodX1,rodY1); ctx.lineTo(rodX2,rodY2); ctx.stroke();
       ctx.strokeStyle=BR; ctx.lineWidth=FS*0.012;
-      ctx.beginPath(); ctx.moveTo(rodX1,rodY1); ctx.lineTo(gs[6].x,gs[6].y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(rodX1,rodY1); ctx.lineTo(rodX2,rodY2); ctx.stroke();
       ctx.beginPath(); ctx.arc(rodX1,rodY1,FS*0.018,0,Math.PI*2);
+      ctx.fillStyle=BR_L; ctx.fill();
+      ctx.beginPath(); ctx.arc(rodX2,rodY2,FS*0.018,0,Math.PI*2);
       ctx.fillStyle=BR_L; ctx.fill();
 
       /* ── 8. O2 gearRing ── */
