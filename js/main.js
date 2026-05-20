@@ -755,7 +755,7 @@ function initWorkshopTitle() {
     oRtx.font = `900 ${FS}px Orbitron, monospace`;
     oRtx.textBaseline = 'alphabetic'; oRtx.textAlign = 'left';
     /* thick dark stroke first → fills inside will cover interior, leaving heavy cast-iron edge */
-    oRtx.lineWidth  = FS * 0.22; oRtx.lineJoin = 'round';
+    oRtx.lineWidth  = FS * 0.05; oRtx.lineJoin = 'round';
     oRtx.strokeStyle= '#0a0804';
     oRtx.strokeText('R', lR.x, BASELINE);
     /* iron gradient fill */
