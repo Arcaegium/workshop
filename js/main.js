@@ -1346,7 +1346,7 @@ function initCardScrambles() {
     let resolveTimers = [];  /* setTimeout IDs from resolveOutwardIn */
 
     function tick(now) {
-      const dt = now - last; last = now;
+      const dt = Math.min(now - last, 100); last = now;
       state.forEach(s => {
         if (s.resolved || s.isSpace) return;
         s.timer -= dt;
@@ -1387,11 +1387,11 @@ function initCardScrambles() {
     function resolveStagger() {
       resolveTimers = [];
       state.forEach(s => {
-        /* ~20% of characters are stragglers — they linger up to the 1s mark */
+        if (s.isSpace) return;  /* spaces never scramble — nothing to resolve */
         const straggler = Math.random() < 0.20;
         const delay = straggler
-          ? 700 + Math.random() * 200   /* 700–900ms start */
-          : Math.random() * 600;         /* 0–600ms start   */
+          ? 700 + Math.random() * 200
+          : Math.random() * 600;
         resolveTimers.push(setTimeout(() => resolveChar(s), delay));
       });
     }
@@ -1400,6 +1400,16 @@ function initCardScrambles() {
       if (hovered) return;
       hovered = true;
       resolveStagger();
+      /* hard deadline — anything still unresolved at 999ms gets forced */
+      resolveTimers.push(setTimeout(() => {
+        state.forEach(s => {
+          if (s.resolved || s.isSpace) return;
+          if (s.fastTimer) { clearInterval(s.fastTimer); s.fastTimer = null; }
+          s.resolved = true;
+          s.span.textContent = s.target;
+        });
+        card.classList.add('portal-resolved');
+      }, 999));
     });
 
     card.addEventListener('mouseleave', () => {
