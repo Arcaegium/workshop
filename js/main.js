@@ -1390,8 +1390,8 @@ function initCardScrambles() {
         if (s.isSpace) return;  /* spaces never scramble — nothing to resolve */
         const straggler = Math.random() < 0.20;
         const delay = straggler
-          ? 700 + Math.random() * 200
-          : Math.random() * 600;
+          ? 500 + Math.random() * 100   /* 500–600ms start → done by ~700ms */
+          : Math.random() * 400;         /* 0–400ms start   → done by ~500ms */
         resolveTimers.push(setTimeout(() => resolveChar(s), delay));
       });
     }
@@ -1409,7 +1409,7 @@ function initCardScrambles() {
           s.span.textContent = s.target;
         });
         card.classList.add('portal-resolved');
-      }, 999));
+      }, 699));
     });
 
     card.addEventListener('mouseleave', () => {
