@@ -1305,8 +1305,8 @@ function initCardScrambles() {
   /* ── steampunk split-flap display for portal titles ── */
   const POOL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 #&*%+/^~!?-';
   const FLIP_MS   = 80;   /* ms per idle flip */
-  const FAST_MS   = 28;   /* ms per flip when resolving on hover */
-  const PAIR_DELAY= 155;  /* ms between resolving pairs (outside-in) */
+  const FAST_MS   = 25;   /* ms per flip when resolving on hover */
+  const PAIR_DELAY= 90;   /* ms between resolving pairs — targets ~1s for 20-char titles */
 
   /* strip accents so É → E etc — real split-flap boards are ASCII only */
   function normalise(str) {
@@ -1344,6 +1344,7 @@ function initCardScrambles() {
 
     let hovered = false;
     let raf = null, last = performance.now();
+    let resolveTimers = [];  /* setTimeout IDs from resolveOutwardIn */
 
     function tick(now) {
       const dt = now - last; last = now;
@@ -1358,9 +1359,19 @@ function initCardScrambles() {
       raf = requestAnimationFrame(tick);
     }
 
+    function checkAllResolved() {
+      if (state.every(s => s.resolved || s.isSpace)) {
+        card.classList.add('portal-resolved');
+      }
+    }
+
     function resolveChar(s) {
-      if (s.isSpace) { s.resolved = true; return; }
+      if (s.isSpace) { s.resolved = true; checkAllResolved(); return; }
       if (s.fastTimer) clearInterval(s.fastTimer);
+      const targetIdx = POOL.indexOf(s.target);
+      if (targetIdx === -1) { s.resolved = true; s.span.textContent = s.target; checkAllResolved(); return; }
+      s.pi = (targetIdx - 4 + POOL.length) % POOL.length;
+      s.span.textContent = POOL[s.pi];
       s.fastTimer = setInterval(() => {
         if (s.resolved) { clearInterval(s.fastTimer); return; }
         s.pi = (s.pi + 1) % POOL.length;
@@ -1369,17 +1380,19 @@ function initCardScrambles() {
           clearInterval(s.fastTimer);
           s.resolved = true;
           s.span.textContent = s.target;
+          checkAllResolved();
         }
       }, FAST_MS);
     }
 
     function resolveOutwardIn() {
+      resolveTimers = [];
       let lo = 0, hi = state.length - 1, step = 0;
       while (lo <= hi) {
         const delay = step * PAIR_DELAY;
         const a = lo, b = hi;
-        setTimeout(() => resolveChar(state[a]), delay);
-        if (b !== a) setTimeout(() => resolveChar(state[b]), delay);
+        resolveTimers.push(setTimeout(() => resolveChar(state[a]), delay));
+        if (b !== a) resolveTimers.push(setTimeout(() => resolveChar(state[b]), delay));
         lo++; hi--; step++;
       }
     }
@@ -1392,10 +1405,13 @@ function initCardScrambles() {
 
     card.addEventListener('mouseleave', () => {
       hovered = false;
+      resolveTimers.forEach(id => clearTimeout(id));
+      resolveTimers = [];
       state.forEach(s => {
         if (s.fastTimer) { clearInterval(s.fastTimer); s.fastTimer = null; }
         if (!s.isSpace) s.resolved = false;
       });
+      card.classList.remove('portal-resolved');
     });
 
     if (!raf) raf = requestAnimationFrame(tick);
