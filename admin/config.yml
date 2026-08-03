@@ -1,7 +1,15 @@
 backend:
   name: github
-  repo: Arcaegium/Nexus
+  repo: Arcaegium/workshop
   branch: main
+
+# Auth note: this site is served from GitHub Pages, which is static —
+# it can't do GitHub's OAuth token exchange (that needs a client
+# secret held server-side). Sign in with the "Sign In with Token"
+# button and a GitHub personal access token; no proxy needed for a
+# solo admin. To get the nicer "Sign in with GitHub" popup instead,
+# deploy sveltia-cms-auth (a Cloudflare Worker) and add its URL here
+# as `base_url:` — leave it unset while using token sign-in.
 
 media_folder: assets/portals
 public_folder: assets/portals
